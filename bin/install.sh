@@ -12,8 +12,8 @@ function os_type
     case `uname` in
         Linux )
             OS_LINUX=1
-            which -s yum && { OS_REDHAT=1; return; }
-            which -s apt-get && { OS_DEBIAN=1; return; }
+            which -a yum && { OS_REDHAT=1; return; }
+            which -a apt-get && { OS_DEBIAN=1; return; }
             ;;
         Darwin )
             OS_MAC=1

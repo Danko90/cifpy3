@@ -1,0 +1,14 @@
+[Unit]
+Description=Collective Intelligence Framework server
+After=network.target
+
+[Service]
+User=cif
+Group=cif
+EnvironmentFile=-/etc/default/cif-server
+ExecStart=/opt/cifpy3/bin/cif-server $DAEMON_OPTS
+Restart=on-failure
+TimeoutStopSec=3
+
+[Install]
+WantedBy=multi-user.target

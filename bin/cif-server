@@ -7,6 +7,7 @@ __author__ = 'James DeVincentis <james.d@hexhost.net>'
 import argparse
 import os
 import signal
+import multiprocessing
 import logging
 import sys
 import time
@@ -27,11 +28,13 @@ cif.CACHEDIR = os.path.join(cif.APPDIR, 'cache')
 
 parser = argparse.ArgumentParser(description='Collective Intelligence Framework Server',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--workers', dest='workers', nargs='?', type=int, default=8,
+parser.add_argument('--workers', dest='workers', nargs='?', type=int, default=multiprocessing.cpu_count(),
                     help='specify the number of workers to start')
 parser.add_argument('--threads-per-worker', dest='threads', nargs='?', type=int, default=30,
                     help='specify the number of threads per worker')
-
+parser.add_argument('--logfile', dest='logfile', nargs='?', type=str, default=os.path.join(cif.LOGDIR, 'cif-server.log'))
+parser.add_argument('--loglevel', dest='loglevel', nargs='?', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                   default='WARNING')
 group = parser.add_argument_group('Server Options')
 group.add_argument('--listen', dest='host', nargs='?', type=str, default='0.0.0.0',
                    help='Host to listen on')
@@ -45,15 +48,6 @@ group.add_argument('--storage-engine', dest='storage', nargs='?', type=str, defa
 group.add_argument('--storage-connection', dest='storage_uri', nargs='?', type=str,
                    default='http://127.0.0.1:9200', help='Connection string for connecting to the storage engine')
 
-group = parser.add_argument_group('Daemon Options')
-group.add_argument('--daemon', dest='daemon', action="store_true", help='run as daemon', default=False)
-group.add_argument('--pid', dest='pid', nargs='?', type=str, default='/var/run/cif-server.pid',
-                   help='pidfile location')
-group.add_argument('--user', dest='user', nargs='?', type=str, default='cif', help='Fork as this user')
-group.add_argument('--logfile', dest='logfile', nargs='?', type=str, default=os.path.join(cif.LOGDIR, 'cif-server.log'))
-group.add_argument('--loglevel', dest='loglevel', nargs='?', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                   default='WARNING')
-
 group = parser.add_argument_group('Feed Options')
 group.add_argument('--feed-disable', dest='feed_disable', action="store_true", help='Disable Feeder program')
 group.add_argument('--feed-directory', dest='feed_directory', nargs='?', type=str,
@@ -65,14 +59,15 @@ group.add_argument('--http-proxy', dest='feed_http_proxy', nargs='?', type=str,
 group.add_argument('--https-proxy', dest='feed_https_proxy', nargs='?', type=str,
                    help='HTTPS Proxy for accessing feeds')
 
-group = parser.add_argument_group('Notification Options')
-group.add_argument('--notify', action="store_true", help='enable notification')
-group.add_argument('--notify-to', dest='notify_to', nargs='?', type=str, default='root', help='notification recipient')
-group.add_argument('--notify-from', dest='notify_from', nargs='?', type=str, default='cif', help='from address')
-group.add_argument('--notify-prefix', dest='notify_prefix', nargs='?', type=str, default='[cif Server]',
-                   help='notification subject prefix')
-group.add_argument('--notify-level', dest='notify_level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                   default='ERROR', help='level to notify at')
+# Notifications are not yet supported
+# group = parser.add_argument_group('Notification Options')
+# group.add_argument('--notify', action="store_true", help='enable notification')
+# group.add_argument('--notify-to', dest='notify_to', nargs='?', type=str, default='root', help='notification recipient')
+# group.add_argument('--notify-from', dest='notify_from', nargs='?', type=str, default='cif', help='from address')
+# group.add_argument('--notify-prefix', dest='notify_prefix', nargs='?', type=str, default='[cif Server]',
+#                   help='notification subject prefix')
+# group.add_argument('--notify-level', dest='notify_level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+#                   default='ERROR', help='level to notify at')
 
 
 # Assign options for global usage in the cif package

@@ -31,7 +31,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if self.token is None:
             try:
-                self.token = self.server.backend.token_get(token=self.headers['Authorization'])
+                self.token = self.server.backend.token_get(self.headers['Authorization'])
             except LookupError as e:
                 self.send_error(401, 'Not Authorized', str(e))
                 return False

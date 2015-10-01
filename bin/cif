@@ -21,18 +21,19 @@ parser = argparse.ArgumentParser(description='Collective Intelligence Framework 
 parser.add_argument('--url', dest='url', nargs='?', type=str, default='http://127.0.0.1:8080',
                     help='CIF REST API URL for connections')
 parser.add_argument('query', type=str, help="HTTP query_string style query.")
-parser.add_argument('--config', type=str, help="Configuration file path.", default="~/.cif.yaml")
+parser.add_argument('--config', type=str, help="Configuration file path.", default="~/.cif")
 parser.add_argument('--token', type=str, help="Token used for authentication.")
 group = parser.add_argument_group('Query Options')
 group.add_argument('--start', type=int, help="Start at record")
 group.add_argument('--count', type=int, help="Get this many records")
 group.add_argument('--chunk-size', type=int, help="Get x records at a time from the backend", default=10000)
 
-group = parser.add_argument_group('Debugging Options')
-group.add_argument('--show-request', dest='show_request', action="store_true",
-                   help='Shows the HTTP headers used when making the request')
-group.add_argument('--show-response', dest='show_response', action="store_true",
-                   help='Shows the HTTP headers the server responded with')
+# Debugging options not supported yet
+# group = parser.add_argument_group('Debugging Options')
+# group.add_argument('--show-request', dest='show_request', action="store_true",
+#                   help='Shows the HTTP headers used when making the request')
+# group.add_argument('--show-response', dest='show_response', action="store_true",
+#                   help='Shows the HTTP headers the server responded with')
 
 group = parser.add_argument_group('Output Options')
 group.add_argument('--format', dest='format', choices=['cli', 'json', 'xml', 'csv', 'custom', 'single'], default="cli",
@@ -53,7 +54,7 @@ if os.path.exists(os.path.expanduser(options['config'])):
     with open(config_path, 'r') as stream:
         config = yaml.load(stream)
     for key, value in config.items():
-        if key not in options and options[key] is not None:
+        if key not in options or options[key] is None:
             options[key] = value
 
 headers = {}

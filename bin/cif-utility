@@ -104,8 +104,7 @@ if __name__ == "__main__":
             "description": 'Default admin token created on installation'
         })
         backend.token_create(token)
-        print("Installation Completed.")
-        print("Admin Token: {0}".format(token.token))
+        print("token: {0}".format(token.token))
 
     if "reinstall" in cif.options and cif.options.reinstall:
         backend.uninstall()
@@ -118,8 +117,7 @@ if __name__ == "__main__":
             "username": "admin",
             "description": 'Default admin token created on installation'})
         backend.token_create(token)
-        print("Installation Completed.")
-        print("Admin Token: {0}".format(token.token))
+        print("token: {0}".format(token.token))
 
     if "uninstall" in cif.options and cif.options.uninstall:
         backend.uninstall()

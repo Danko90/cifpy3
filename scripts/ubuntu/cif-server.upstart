@@ -1,0 +1,19 @@
+# cif-server - Collective Intelligence Framework server
+#
+# Collective Intelligence Framework server, Provides rest API and ingests feeds
+#
+
+description "Collective Intelligence Framework server"
+
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+respawn
+respawn limit 10 5
+umask 022
+setgid cif
+setuid cif
+script
+    . /etc/default/cif-server
+    exec /opt/cifpy3/bin/cif-server $DAEMON_OPTS
+end script

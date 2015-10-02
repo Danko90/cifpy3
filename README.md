@@ -7,6 +7,22 @@ There are two main components: the server, and the client. The server is respons
 
 ----------
 
+* [Features](#features)
+* [Architecture](#architecture)
+* [Prerequisites](#prerequisites)
+* [Installation](#installation)
+* [Updating](#updating)
+* [Usage](#usage)
+  * [CLI Usage](#cli-usage)
+  * [API Usage](#api-usage)
+    * [Example Search Request](#example-observable-search-request)
+    * [Example Submission](#example-observable-submission)
+* [Object Reference](#object-reference)
+  * [Observable](#observable)
+    * [Observable Type Specific](#observable-type-specific-attributes)
+  * [Token](#token)
+* [Performance Notes](#performance-notes)
+
 Features
 ----------
 * Powered by Python 3.4+
@@ -67,14 +83,25 @@ Prerequisites
 * One of the following supported operating systems
   * Debian 8 (jessie) or later
   * Ubuntu 14.04 (trusty) or later
-
+  * CentOS 7 or later
+  * RHEL 7 or later (with an active RHN subscription)
+  * FreeBSD 10.2 or later
 
 Installation
 -------------
-By default CIFpy3 gets installed to /opt/CIFpy3/.
+By default CIFpy3 gets installed to /usr/local/cifpy3/.
 
 > **note**: be sure to save the admin token generated during installation. You need it if you want to add any additional users or use CIFpy3 with authentication enabled or even use the API. It does get saved to ~/.cif.
 
+RedHat/CentOS
+```
+#!/bin/bash
+curl -k https://raw.githubusercontent.com/jmdevince/cifpy3/master/bin/install.sh > install.sh
+chmod +x install.sh
+./install.sh
+```
+
+Ubuntu/Debian
 ```
 #!/bin/bash
 wget --no-check-certificate -O install.sh https://raw.githubusercontent.com/jmdevince/cifpy3/master/bin/install.sh
@@ -91,7 +118,7 @@ Very simple process to update cifpy3
 
 ```
 #!/bin/bash
-cd /opt/cifpy3
+cd /usr/local/cifpy3
 git pull
 ```
 
@@ -216,7 +243,7 @@ Most of these are automatically filled in using Worker meta and plugins after th
 * expires: Expiration timestamp. After this expiration period the token cannot be used any longer. (Default: none)
 * read: Read permission. 1 = User can read from allowed groups, 0 = user cannot read (Default: 1)
 * admin: Admin flag. 1 = Grants this user all privileges across all groups, 0 = Not an admin (Default: 0)
-* revoked: Revokation status. 1 = Revoked and cannot be used anymore, 0 = Active
+* revoked: Revocation status. 1 = Revoked and cannot be used anymore, 0 = Active
 
 Performance Notes
 ------------------

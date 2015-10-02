@@ -10,7 +10,7 @@
 # Description:       Collective Intelligence Framework server, Provides rest API and ingests feeds
 ### END INIT INFO
 
-DIR=/opt/cifpy3/bin
+DIR=/usr/local/cifpy3/bin
 DAEMON=$DIR/cif-server
 DAEMON_NAME=CIF-Server
 DAEMON_OPTS=""

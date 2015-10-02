@@ -1,0 +1,29 @@
+#!/bin/sh
+
+. /etc/rc.subr
+
+name="cif-server"
+rcvar=cifserver_enable
+start_cmd="cifserver_start"
+stop_cmd="cifserver_stop"
+
+load_rc_config $name
+
+
+cifserver_start()
+{
+    /usr/sbin/daemon -f -u cif /usr/local/cifpy3/bin/cif-server ${cifserver_flags}
+    RETURN=$?
+    if [ $RETURN -ne 0 ]; then
+        return $RETURN
+    fi
+    return 0
+}
+
+
+cifserver_stop()
+{
+    pkill -f cif-server
+}
+
+run_rc_command "$1"

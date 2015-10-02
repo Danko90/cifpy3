@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 #
 # cif Server - Listens and handles all data incoming/outgoing
 #

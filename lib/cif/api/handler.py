@@ -184,8 +184,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
             post_variables = urllib.parse.parse_qs(self.rfile.read(length), keep_blank_values=1)
         else:
             post_variables = {}
-        print(post_variables)
-        # Look up the token first
+
+        request = match.groupdict()
+
+        try:
+            token = self.server.backend.token_get(request['id'])
+        except LookupError as e:
+            self.send_error(404, 'Not Found', str(e))
+            return
+
+        for name, value in post_variables:
+            try:
+                setattr(token, name, value)
+            except Exception as e:
+                self.send_error(400, 'Bad Request', str(e))
+                return
+
+        try:
+            self.server.backend.token_update(token)
+        except Exception as e:
+            self.send_error(500, 'Internal Server Error', str(e))
+            return
+
+
 
     def do_PUT(self):
         """Processes PUT request. PUT requests will create a new object.
@@ -211,8 +232,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
             post_variables = urllib.parse.parse_qs(self.rfile.read(length), keep_blank_values=1)
         else:
             post_variables = {}
-        print(post_variables)
-        # Look up the token first
 
         request = match.groupdict()
 
@@ -229,6 +248,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             self.send_response(201)
             self.send_header('Content-Type', 'application/json')
+            self.send_header('Location', '/token/{0}'.format(token.token))
             self.end_headers()
             self.wfile.write(token.todict())
 
@@ -246,6 +266,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
             cif.worker.tasks.put(observable)
             self.send_response(202)
+            self.send_header('Location', '/observable/{0}'.format(observable.id))
             self.end_headers()
 
     def do_DELETE(self):

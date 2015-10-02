@@ -15,5 +15,5 @@ setgid cif
 setuid cif
 script
     . /etc/default/cif-server
-    exec /opt/cifpy3/bin/cif-server $DAEMON_OPTS
+    exec /usr/local/cifpy3/bin/cif-server $DAEMON_OPTS
 end script

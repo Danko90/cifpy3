@@ -134,12 +134,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
-                    self.wfile.write(bytes('[', 'UTF-8'))
+                    self.wfile.write(bytes('[', 'ISO8859-1'))
                     for observable in observables[:-1]:
-                        self.wfile.write(bytes(json.dumps(observable.todict()) + ", ", 'UTF-8'))
+                        self.wfile.write(bytes(json.dumps(observable.todict()) + ", ", 'ISO8859-1'))
                     else:
-                        self.wfile.write(bytes(json.dumps(observables[-1].todict()), 'UTF-8'))
-                    self.wfile.write(bytes(']', 'UTF-8'))
+                        self.wfile.write(bytes(json.dumps(observables[-1].todict()), 'ISO8859-1'))
+                    self.wfile.write(bytes(']', 'ISO8859-1'))
                 except LookupError as e:
                     self.send_error(404, 'Not Found', str(e))
                 except Exception as e:
@@ -153,12 +153,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(bytes('[', 'UTF-8'))
+            self.wfile.write(bytes('[', 'ISO8859-1'))
             for token in tokens[:-1]:
-                self.wfile.write(bytes(json.dumps(token.todict()) + ",", 'UTF-8'))
+                self.wfile.write(bytes(json.dumps(token.todict()) + ",", 'ISO8859-1'))
             else:
-                self.wfile.write(bytes(json.dumps(tokens[-1].todict()), 'UTF-8'))
-            self.wfile.write(bytes(']', 'UTF-8'))
+                self.wfile.write(bytes(json.dumps(tokens[-1].todict()), 'ISO8859-1'))
+            self.wfile.write(bytes(']', 'ISO8859-1'))
         else:
             self.send_bad_request()
         return

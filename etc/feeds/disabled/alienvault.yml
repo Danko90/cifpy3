@@ -8,7 +8,7 @@ defaults:
 
 feeds:
   botnet:
-    pattern: '^(\b(?:\d{1,3}\.){3}\d{1,3}\b).*#.*(C&C|APT);?.*'
+    pattern: '^(\b(?:\d{1,3}\.){3}\d{1,3}\b).*#.*(?:C&C|APT);?.*'
     tags: botnet
 
   scan:
@@ -25,5 +25,5 @@ feeds:
     application: smtp
 
   malware:
-    pattern: '^(\b(?:\d{1,3}\.){3}\d{1,3}\b).*#.*(Malware IP|Malware Domain|Malicious Host|Malware distribution|RBN);?.*'
+    pattern: '^(\b(?:\d{1,3}\.){3}\d{1,3}\b).*#.*(?:Malware IP|Malware Domain|Malicious Host|Malware distribution|RBN);?.*'
     tags: malware

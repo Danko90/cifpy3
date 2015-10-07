@@ -124,8 +124,12 @@ class Observable(Base):
 
     @group.setter
     def group(self, value):
-        if self._validation and not isinstance(value, list):
-            raise TypeError("Group must be a list")
+        if self._validation and value is not None:
+            if not isinstance(value, list):
+                if isinstance(value, str):
+                    value = [value]
+                else:
+                    raise TypeError("Group must be a list")
         self._group = value
 
     @property

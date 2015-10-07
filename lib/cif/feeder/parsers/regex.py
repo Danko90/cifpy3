@@ -48,7 +48,7 @@ class Regex(Parser):
 
             if match is None:
                 if not line.startswith('#') and not line.startswith(';') and not len(line) == 0:
-                    self.logging.warning("No Match - position {0}; contents: '{1}'; match: {2}; values: {3}".format(
+                    self.logging.debug("No Match - position {0}; contents: '{1}'; match: {2}; values: {3}".format(
                         self.file.tell(), line, repr(match), len(self.parsing_details["values"]))
                     )
                 continue

@@ -6,7 +6,7 @@ defaults:
 feeds:
   listed_ip_1_all:
     remote: http://www.stopforumspam.com/downloads/listed_ip_1_all.zip
-    pattern: '^(\S+),(\S+),(\S+)$'
+    parser: csv
     values:
       - observable
       - null

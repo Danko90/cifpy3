@@ -5,10 +5,9 @@ defaults:
   tlp: green
   altid_tlp: white
   confidence: 65
-  pattern: ^ALL\s\:\s(\S+) $
+  pattern: ^ALL\s\:\s(\S+)$
   values:
     - observable
-    - null
 feeds:
   ssh:
     remote: http://charles.the-haleys.org/ssh_dico_attack_hdeny_format.php/hostsdeny.txt

@@ -42,7 +42,7 @@ feeds:
           # regex pattern to parse the guid tag
           pattern: '^.*md5=(\S+)$'
           values: observable
-        pubDate:
+        published:
           # regex pattern to parse the pubDate tag
           pattern: '^([\w|\s,\d:]+)$'
           values: lasttime

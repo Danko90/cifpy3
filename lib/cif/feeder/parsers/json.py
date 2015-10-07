@@ -13,6 +13,7 @@ class Json(Parser):
         if raw.startswith('{') and raw.endswith('}'):
             raw = "[{0}]".format(raw)
         self.json_data = json.loads(raw)
+        self.json_iter = iter(self.json_data)
 
     def parsefile(self, max_objects=1000):
         """Parse file provided by self.file`. Return `max_objects` at a time. This is repetitively called
@@ -29,7 +30,7 @@ class Json(Parser):
         if self.total_objects == 0 and "start" in self.parsing_details and self.parsing_details["start"] > 0:
             for x in range(1, self.parsing_details["start"]):
                 try:
-                    line = next(self.json_data.next)
+                    line = next(self.json_iter)
                     if line is None:
                         self.parsing = False
                         break
@@ -41,7 +42,7 @@ class Json(Parser):
         objects = 0
         while objects < max_objects:
             try:
-                line = next(self.json_data)
+                line = next(self.json_iter)
                 if line is None:
                     self.parsing = False
                     break

@@ -51,7 +51,7 @@ class Rss(Parser):
                     pattern['values'] = [pattern['values']]
                 match = re.search(pattern['pattern'], entry[element])
                 if match is None or match.lastindex != len(pattern["values"]):
-                    self.logging.warning(
+                    self.logging.debug(
                         "No Match - feed: {4}; element {0}; contents: '{1}'; match: '{2}'; values: {3}".format(
                             element, entry[element], repr(match), len(pattern["values"]),
                             self.parsing_details['feed_name']

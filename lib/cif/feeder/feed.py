@@ -97,7 +97,7 @@ class Feed(object):
                 }
 
                 response = requests.request(feed_parsing_details["method"], feed_parsing_details["remote"],
-                                            proxies=cif.proxies, stream=True, headers=headers
+                                            proxies=cif.proxies, stream=True, headers=headers, verify=False
 
                                             )
 
@@ -134,12 +134,12 @@ class Feed(object):
                 else:
                     temp_bin = temp
 
-            file_to_parse = tempfile.TemporaryFile(mode="w+")
+            file_to_parse = tempfile.TemporaryFile(mode="w+", encoding="ISO8859-1")
             while True:
                 buf = temp_bin.read(1024 * 1024)
                 if len(buf) == 0:
                     break
-                file_to_parse.write(buf.decode("UTF-8"))
+                file_to_parse.write(buf.decode("ISO8859-1"))
             self.logging.debug("Wrote {0} bytes to text file.".format(file_to_parse.tell()))
             file_to_parse.seek(0)
 

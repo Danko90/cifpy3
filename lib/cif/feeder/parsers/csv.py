@@ -43,7 +43,7 @@ class Csv(Parser):
             if len(line) != self.valuecount:
                 if line[0].startswith('#') or line[0].startswith(';'):
                     continue
-                self.logging.warning("No Match - feed: '{3}'; contents: '{0}'; match-count: {2}; values: {1}".format(
+                self.logging.debug("No Match - feed: '{3}'; contents: '{0}'; match-count: {2}; values: {1}".format(
                     line, len(self.parsing_details["values"]), len(line), self.parsing_details['feed_name'])
                 )
                 continue

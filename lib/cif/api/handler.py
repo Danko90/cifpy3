@@ -14,6 +14,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.token = None
         http.server.BaseHTTPRequestHandler.__init__(self, *args)
 
+
+    def connect_to_backend(self):
+        # Based on the startup options for cif-server, let's get the backend + instantiate the class from that module
+        self.server.logging.debug("Loading backend: {0}".format(cif.options.storage.lower()))
+        self.backend = getattr(__import__("cif.backends.{0}".format(
+            cif.options.storage.lower()), fromlist=[cif.options.storage.title()]), cif.options.storage.title()
+        )()
+
+        # Connect to the backend
+        self.server.logging.debug("Connecting to backend: {0}".format(cif.options.storage_uri))
+        self.backend.connect(cif.options.storage_uri)
+
     def check_authentication(self):
         """Checks authentication for an incoming request
 
@@ -31,7 +43,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if self.token is None:
             try:
-                self.token = self.server.backend.token_get(self.headers['Authorization'])
+                self.token = self.backend.token_get(self.headers['Authorization'])
             except LookupError as e:
                 self.send_error(401, 'Not Authorized', str(e))
                 return False
@@ -80,6 +92,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         searched.
 
         """
+        self.connect_to_backend()
         if not self.check_authentication():
             return
 
@@ -130,7 +143,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
                 try:
 
-                    observables = self.server.backend.observable_search(args, start, count)
+                    observables = self.backend.observable_search(args, start, count)
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
@@ -149,7 +162,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif request['object'] == "tokens":
             if not self.is_admin():
                 return
-            tokens = self.server.backend.token_list()
+            tokens = self.backend.token_list()
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -167,6 +180,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Processes POST requests. POST requests will update an existing object.
         Only tokens can be updated. Returns a 404 if the object isn't found.
         """
+        self.connect_to_backend()
         if not self.check_authentication():
             return
         if not self.is_admin():
@@ -188,7 +202,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         request = match.groupdict()
 
         try:
-            token = self.server.backend.token_get(request['id'])
+            token = self.backend.token_get(request['id'])
         except LookupError as e:
             self.send_error(404, 'Not Found', str(e))
             return
@@ -201,7 +215,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
 
         try:
-            self.server.backend.token_update(token)
+            self.backend.token_update(token)
         except Exception as e:
             self.send_error(500, 'Internal Server Error', str(e))
             return
@@ -214,6 +228,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         Sends a 202 (Accepted) for creating observables
 
         """
+        self.connect_to_backend()
         if not self.check_authentication:
             return
 
@@ -224,12 +239,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
 
         # Update the ID with the given post parameters
-        content_type, parameter_dict = cgi.parse_header(self.headers.getheader('Content-Type'))
+        content_type, parameter_dict = cgi.parse_header(self.headers['Content-Type'])
         if content_type == 'multipart/form-data':
             post_variables = cgi.parse_multipart(self.rfile, parameter_dict)
         elif content_type == 'application/x-www-form-urlencoded':
-            length = int(self.headers.getheader('content-length'))
-            post_variables = urllib.parse.parse_qs(self.rfile.read(length), keep_blank_values=1)
+            length = int(self.headers['content-length'])
+            post_variables = dict((k, v if len(v) > 1 else v[0]) for k, v in urllib.parse.parse_qs(self.rfile.read(length).decode('UTF-8'), keep_blank_values=1).items())
         else:
             post_variables = {}
 
@@ -242,7 +257,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if "token" in post_variables:
                     del post_variables["token"]
                 token = cif.types.Token(post_variables)
-                self.server.backend.token_create(token)
+                self.backend.token_create(token)
             except Exception as e:
                 self.send_error(422, 'Could not process token: {0}'.format(e))
                 return
@@ -273,6 +288,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Handles a DELETE HTTP request. Only tokens can be deleted at this time.
         :return:
         """
+        self.connect_to_backend()
         if not self.is_admin():
             return
 
@@ -285,6 +301,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         request = match.groupdict()
 
         try:
-            self.server.backend.token_delete(request['id'])
+            self.backend.token_delete(request['id'])
         except Exception as e:
             self.send_error(500, "Failed to delete token: {0}".format(e))

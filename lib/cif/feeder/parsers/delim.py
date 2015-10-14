@@ -21,8 +21,8 @@ class Delim(Parser):
 
         observables = []
 
-        if self.total_objects == 0 and "start" in self.parsing_details and self.parsing_details["start"] > 0:
-            for x in range(1, self.parsing_details["start"]+1):
+        if self.total_objects == 0 and "start" in self.parsing_details and self.parsing_details["start"] > 1:
+            for x in range(1, self.parsing_details["start"]):
                 if self.file.tell() >= self.file_size:
                     self.parsing = False
                     return
@@ -55,13 +55,16 @@ class Delim(Parser):
                     )
                 )
                 continue
-
+            for key,value in enumerate(match):
+                if isinstance(value, str):
+                    match[key] = value.strip()
+            
             observable = self.create_observable_from_meta_if_not_in_journal(match)
 
             if observable is not None:
                 observables.append(observable)
                 objects += 1
-                self.total_objects += 1
+            self.total_objects += 1
 
             if self.ending and self.total_objects >= self.end:
                 self.parsing = False

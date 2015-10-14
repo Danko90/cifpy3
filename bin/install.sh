@@ -92,7 +92,7 @@ if [[ OS_FREEBSD -gt 0 ]]; then
 
 
     echo -n "[INFO] Installing Pip3 dependencies..."
-    scl enable rh-python34 -- pip3 -q install pygeoip feedparser tabulate pyyaml requests dnspython3 python-dateutil
+    scl enable rh-python34 -- pip3 -q install pygeoip feedparser tabulate pyyaml requests dnspython3 python-dateutil schedule
     if [[ $? -ne 0 ]]; then
         echo "[ERROR] Cannot Pip Install dependencies."
         exit
@@ -215,7 +215,7 @@ if [[ OS_CENTOS -gt 0 ]] || [[ OS_REDHAT -gt 0 ]]; then
     echo "[OKAY] Installed Python34"
 
     echo -n "[INFO] Installing Pip3 dependencies..."
-    scl enable rh-python34 -- pip3 -q install pygeoip feedparser tabulate pyyaml requests dnspython3 python-dateutil
+    scl enable rh-python34 -- pip3 -q install pygeoip feedparser tabulate pyyaml requests dnspython3 python-dateutil schedule
     if [[ $? -ne 0 ]]; then
         echo "[ERROR] Cannot Pip Install dependencies."
         exit
@@ -345,7 +345,7 @@ if [[ OS_DEBIAN -gt 0 ]] || [[ OS_UBUNTU -gt 0 ]]; then
 
     # Pip dependencies
     echo -n "Installing Pip3 Dependencies..."
-    pip3 -q install pygeoip feedparser tabulate
+    pip3 -q install pygeoip feedparser tabulate schedule
     if [[ $? -ne 0 ]]; then
         echo "[ERROR] Cannot Pip Install dependencies."
         exit

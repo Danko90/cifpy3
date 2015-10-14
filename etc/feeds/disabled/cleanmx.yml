@@ -13,7 +13,7 @@
 # CIF Application, you will experience less HTTP timeouts
 # and ultimately obtain the data served up by CleanMX.
 
-parser: xml
+parser: rss
 defaults:
   provider: support.clean-mx.de
   altid_tlp: amber
@@ -22,16 +22,19 @@ defaults:
 feeds:
   malware:
     remote: 'http://support.clean-mx.de/clean-mx/xmlviruses.php?'
-    altid: 'http://support.clean-mx.de/clean-mx/viruses.php?id=<id>'
+    altid: 'http://support.clean-mx.de/clean-mx/viruses.php?id=<rssid>'
     node: entry
-    map:
-      - first
-      - virusname
-      - url
-      - id
-    values:
-      - lasttime
-      - description
-      - observable
-      - id
+    pattern:
+      first:
+        pattern: '(.*)'
+        values: lasttime
+      virusname:
+        pattern: '(.*)'
+        values: description
+      url:
+        pattern: '(.*)'
+        values: observable
+      id:
+        pattern: '(.*)'
+        values: rssid
     tags: malware

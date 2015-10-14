@@ -52,8 +52,6 @@ group = parser.add_argument_group('Feed Options')
 group.add_argument('--feed-disable', dest='feed_disable', action="store_true", help='Disable Feeder program')
 group.add_argument('--feed-directory', dest='feed_directory', nargs='?', type=str,
                    default=os.path.join(cif.ETCDIR, 'feeds'), help='Read feed configurations from this directory')
-group.add_argument('--feed-interval', dest='feed_interval', nargs='?', type=int, default=3600,
-                   help='Feed Fetching interval (in seconds)')
 group.add_argument('--http-proxy', dest='feed_http_proxy', nargs='?', type=str,
                    help='HTTP Proxy for accessing feeds')
 group.add_argument('--https-proxy', dest='feed_https_proxy', nargs='?', type=str,

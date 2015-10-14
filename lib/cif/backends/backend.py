@@ -23,6 +23,10 @@ class Backend(object):
     def observable_create(self, observable):
         raise NotImplementedError("This must be implemented in the backend storage class")
 
+    # Cleans observables older than date
+    def observable_clean(self, date):
+        raise NotImplementedError("This must be implemented in the backend storage class")
+
     # Gets a token
     def token_get(self, token_id):
         raise NotImplementedError("This must be implemented in the backend storage class")

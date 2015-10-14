@@ -87,7 +87,10 @@ class Observable(Base):
     @timestamp.setter
     def timestamp(self, value):
         if value is not None and self._validation:
-            value = dateutil.parser.parse(value).strftime("%Y-%m-%dT%H:%I:%SZ")
+            try:
+                value = datetime.datetime.fromtimestamp(int(value)).strftime("%Y-%m-%dT%H:%I:%SZ")
+            except:
+                value = dateutil.parser.parse(value).strftime("%Y-%m-%dT%H:%I:%SZ")
         self._timestamp = value
 
     @property
@@ -258,7 +261,10 @@ class Observable(Base):
     @reporttime.setter
     def reporttime(self, value):
         if self._validation and value is not None:
-            value = dateutil.parser.parse(value).strftime("%Y-%m-%dT%H:%I:%SZ")
+            try:
+                value = datetime.datetime.fromtimestamp(int(value)).strftime("%Y-%m-%dT%H:%I:%SZ")
+            except:
+                value = dateutil.parser.parse(value).strftime("%Y-%m-%dT%H:%I:%SZ")
         self._reporttime = value
 
     @property
@@ -268,7 +274,10 @@ class Observable(Base):
     @firsttime.setter
     def firsttime(self, value):
         if self._validation and value is not None:
-            value = dateutil.parser.parse(value).strftime("%Y-%m-%dT%H:%I:%SZ")
+            try:
+                value = datetime.datetime.fromtimestamp(int(value)).strftime("%Y-%m-%dT%H:%I:%SZ")
+            except:
+                value = dateutil.parser.parse(value).strftime("%Y-%m-%dT%H:%I:%SZ")
         self._firsttime = value
 
     @property
@@ -278,5 +287,8 @@ class Observable(Base):
     @lasttime.setter
     def lasttime(self, value):
         if self._validation and value is not None:
-            value = dateutil.parser.parse(value).strftime("%Y-%m-%dT%H:%I:%SZ")
+            try:
+                value = datetime.datetime.fromtimestamp(int(value)).strftime("%Y-%m-%dT%H:%I:%SZ")
+            except:
+                value = dateutil.parser.parse(value).strftime("%Y-%m-%dT%H:%I:%SZ")
         self._lasttime = value

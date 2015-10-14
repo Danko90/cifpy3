@@ -29,7 +29,7 @@ class Regex(Parser):
 
         observables = []
 
-        if self.total_objects == 0 and "start" in self.parsing_details and self.parsing_details["start"] > 0:
+        if self.total_objects == 0 and "start" in self.parsing_details and self.parsing_details["start"] > 1:
             for x in range(1, self.parsing_details["start"]):
                 if self.file.tell() >= self.file_size:
                     self.parsing = False
@@ -43,9 +43,10 @@ class Regex(Parser):
                 break
 
             line = self.file.readline().strip()
-
+            if line.startswith('#'):
+                continue
             match = self.regex.search(line)
-
+            
             if match is None:
                 if not line.startswith('#') and not line.startswith(';') and not len(line) == 0:
                     self.logging.debug("No Match - position {0}; contents: '{1}'; match: {2}; values: {3}".format(
@@ -69,8 +70,8 @@ class Regex(Parser):
             observable = self.create_observable_from_meta_if_not_in_journal(results)
             if observable is not None:
                 observables.append(observable)
-                self.total_objects += 1
                 objects += 1
+            self.total_objects += 1
 
             if self.ending and self.total_objects >= self.end:
                 self.parsing = False

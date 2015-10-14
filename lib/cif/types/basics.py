@@ -3,7 +3,6 @@ __author__ = 'James DeVincentis <james.d@hexhost.net>'
 import ipaddress
 import os
 import re
-import email.utils
 import cif
 
 hash_types = {
@@ -18,7 +17,8 @@ hash_types = {
 regex = {
     'url': re.compile('^(http|https|smtp|ftp|sftp)://(\S*\.\S*)$'),
     'url_2': re.compile(r'^([a-z0-9.-]+[a-z]{2,63}|\b(?:\d{1,3}\.){3}\d{1,3}\b)(:(\d+))?/+'),
-    'fqdn': re.compile('^((xn--)?(--)?[a-zA-Z0-9-_]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}(--p1ai)?$')
+    'fqdn': re.compile('^((xn--)?(--)?[a-zA-Z0-9-_]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}(--p1ai)?$'),
+    'email' : re.compile('^.*@.*\..*$')
 }
 
 
@@ -200,12 +200,7 @@ def is_email(value):
     :return: True on successful parse of an Email address, False on invalid Email Address
     :rtype bool:
     """
-    result = email.utils.parseaddr(value)
-    if len(result[0]) == 0 or len(result[1]) == 0:
-        return False
-    if '.' not in result[1]:
-        return False
-    return True
+    return regex['email'].match(value) is not None
 
 
 def is_asn(value):

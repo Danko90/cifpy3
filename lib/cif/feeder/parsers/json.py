@@ -27,7 +27,7 @@ class Json(Parser):
 
         observables = []
 
-        if self.total_objects == 0 and "start" in self.parsing_details and self.parsing_details["start"] > 0:
+        if self.total_objects == 0 and "start" in self.parsing_details and self.parsing_details["start"] > 1:
             for x in range(1, self.parsing_details["start"]):
                 try:
                     line = next(self.json_iter)
@@ -53,8 +53,8 @@ class Json(Parser):
             observable = self.create_observable_from_meta_if_not_in_journal(line, usemap=True)
             if observable is not None:
                 observables.append(observable)
-                self.total_objects += 1
                 objects += 1
+            self.total_objects += 1
 
             if self.ending and self.total_objects >= self.end:
                 self.parsing = False

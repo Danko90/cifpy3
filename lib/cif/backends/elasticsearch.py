@@ -3,6 +3,8 @@ __author__ = 'James DeVincentis <james.d@hexhost.net>'
 import http.client
 import json
 import socket
+
+import datetime
 import dateutil.parser
 import cif
 
@@ -21,6 +23,7 @@ class Elasticsearch(Backend):
         :param str connect_string: well formed URL for the ElasticSearch HTTP API
         :raises NotImplementedError:
         """
+        socket.setdefaulttimeout(180)
 
         if "://" in connect_string:
             (method, url) = connect_string.split("://")
@@ -29,11 +32,9 @@ class Elasticsearch(Backend):
             url = connect_string
 
         if method == "http":
-            self.conn = http.client.HTTPConnection(url, timeout=180)
-            socket.setdefaulttimeout(60)
+            self.conn = http.client.HTTPConnection(url)
         elif method == "https":
-            self.conn = http.client.HTTPSConnection(url, timeout=180)
-            socket.setdefaulttimeout(180)
+            self.conn = http.client.HTTPSConnection(url)
         else:
             raise NotImplementedError("Connection Protocol {0:s} not supported".format(method))
 
@@ -106,7 +107,21 @@ class Elasticsearch(Backend):
             observables.append(self._object('observable', hit["_source"]))
 
         return observables
-
+    
+    def observable_clean(self, date):
+        """Deletes all observables older than date
+        
+        :param date datetime: a datetime object. Use this as a point of reference for deleting objects older than this date
+        """
+        result = self._request(path='/_aliases')
+        for index in result.keys():
+            if index.startswith("cif.observables-"):
+                (year,month,day) = index.replace("cif.observables-", "").split(".")
+                index_date = datetime.datetime(int(year), int(month), int(day))
+                if index_date < date:
+                    # Delete the index
+                    self._request(path='/{0}'.format(index), method="DELETE")
+        
     def observable_create(self, observables):
         """Creates a new observable or list of observables using the ElasticSearch bulk API
 
@@ -308,8 +323,6 @@ class Elasticsearch(Backend):
             else:
                 args.append(json.dumps(body))
 
-#        self.logging.debug("Query search: {0}".format(args))   
- 
         try:
             self.conn.request(method, *args)
         except Exception as e:
@@ -354,10 +367,10 @@ class Elasticsearch(Backend):
         """
 
         # Params that will be searched in a range with greater than or equal to
-        gte_params = ['confidence', 'firsttime', 'reporttime']
+        gte_params = ['confidence', 'firsttime', 'reporttime', 'timestamp']
 
         # Params that will be search in a range with less than or equal to
-        lte_params = ['lasttime', 'reporttimeend']
+        lte_params = ['lasttime', 'reporttimeend', 'timestampend']
 
         # Params that must be a list if present
         list_params = ['tags', 'description', 'application', 'asn', 'provider', 'rdata', 'group']
@@ -385,6 +398,8 @@ class Elasticsearch(Backend):
                     else:
                         a.append({"term": {param: value}})
             elif param in lte_params:
+                if param.endswith('end'):
+                    param = param[:-3]
                 a.append({"range": {param: {"lte": value}}})
             elif param in gte_params:
                 a.append({"range": {param: {"gte": value}}})

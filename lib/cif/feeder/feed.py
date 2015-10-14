@@ -12,7 +12,6 @@ import requests
 import cif
 from .parser import Parser
 from ..worker import tasks
-from sets import Set
 
 class Feed(object):
     def __init__(self, feed_file):
@@ -156,7 +155,8 @@ class Feed(object):
                     self.logging.debug("Feed '{0}' is sending {1} new objects to be processed".format(
                         feed_parsing_details['remote'], len(observables))
                     )
-                    for observable in Set(observables):
+                    for observable in set(observables):
+#                        self.logging.debug("Fetched observable : {0}".format(observable.observable))
                         tasks.put(observable)
 
             file_to_parse.close()

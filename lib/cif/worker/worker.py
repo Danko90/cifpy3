@@ -25,41 +25,53 @@ class Thread(threading.Thread):
         """
         self.logging.debug("Booted")
         while True:
-            observable = self.queue.get()
-            if observable is None:
-                break
-            self.logging.debug("Thread Loop: Got observable")
-
-            for name, meta in cif.worker.meta.meta.items():
-                self.logging.debug("Fetching meta using: {0}".format(name))
-                observable = meta(observable=observable)
-
-            newobservables = []
-
-            for name, plugin in cif.worker.plugins.plugins.items():
-                self.logging.debug("Running plugin: {0}".format(name))
-                result = plugin(observable=observable)
-                if result is not None:
-                    for newobservable in result:
-                        newobservables.append(newobservable)
-
-            for name, meta in cif.worker.meta.meta.items():
-                for key, o in enumerate(newobservables):
-                    self.logging.debug("Fetching meta using: {0} for new observable: {1}".format(name, key))
-                    newobservables[key] = meta(observable=o)
-
-            newobservables.insert(0, observable)
-            self.logging.debug("Sending {0} observables to be created.".format(len(newobservables)))
-            self.backendlock.acquire()
-
-            try:
-                self.backend.observable_create(newobservables)
-            finally:
-                # Make sure to release the lock even if we encounter but don't trap it.
-                self.backendlock.release()
-
-            self.logging.debug("worker Loop: End")
-
+            #self.backendlock.acquire() 
+            with self.backendlock:
+                observable = self.queue.get()
+                if observable is None:
+                    break
+                self.logging.debug("Thread Loop: Got observable")
+    
+                for name, meta in cif.worker.meta.meta.items():
+                    self.logging.debug("Fetching meta using: {0}".format(name))
+                    observable = meta(observable=observable)
+    
+                newobservables = []
+                seen_observable = set()
+                
+#               self.backendlock.acquire()
+                
+                
+                for name, plugin in cif.worker.plugins.plugins.items():
+                    self.logging.debug("Running plugin: {0}".format(name))
+                    result = plugin(observable=observable)
+                    if result is not None:
+                        for newobservable in result:
+                            if newobservable.observable not in seen_observable:
+                                self.logging.debug("Found observable in the list : {0}".format(newobservable.observable))
+                                seen_observable.add(newobservable.observable)
+                                newobservables.append(newobservable)
+    
+    
+                for name, meta in cif.worker.meta.meta.items():
+                    for key, o in enumerate(newobservables):
+                        self.logging.debug("Fetching meta using: {0} for new observable: {1} having data : {2}".format(name, key, o.observable))
+                        newobservables[key] = meta(observable=o)
+    
+                newobservables.insert(0, observable)
+                self.logging.debug("Sending {0} observables to be created.".format(len(newobservables)))
+    
+                try:          
+                    for newobservable in reversed(newobservables):
+                        param = {"observable" : newobservable.observable}
+                        found_observables = self.backend.observable_search(param)
+                        if found_observables:
+                            newobservables.remove(newobservable)
+                    self.backend.observable_create(newobservables)
+                finally:
+#                # Make sure to release the lock even if we encounter but don't trap it. But if you use with you don't need to release the lock
+#                self.backendlock.release()
+                    self.logging.debug("worker Loop: End")
 
 class QueueManager(threading.Thread):
     def __init__(self, worker, source, destination):
@@ -114,6 +126,8 @@ class Process(multiprocessing.Process):
 
         self.backend.connect(cif.options.storage_uri)
         self.logging.debug("Connected to Backend {0}".format(cif.options.storage_uri))
+
+        backend_installed = True
 
         self.threads = {}
         queuemanager = None

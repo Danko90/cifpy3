@@ -2,8 +2,9 @@ __author__ = 'James DeVincentis <james.d@hexhost.net>'
 
 import http.client
 import json
-
+import socket
 import dateutil.parser
+import cif
 
 from . import Backend
 
@@ -11,6 +12,8 @@ from . import Backend
 class Elasticsearch(Backend):
     def __init__(self):
         self.conn = None
+        self.logging = cif.logging.getLogger('ElasticSearch')
+        self.installed = False
 
     def connect(self, connect_string):
         """Connects to the backend and performs a basic status check
@@ -26,9 +29,11 @@ class Elasticsearch(Backend):
             url = connect_string
 
         if method == "http":
-            self.conn = http.client.HTTPConnection(url)
+            self.conn = http.client.HTTPConnection(url, timeout=180)
+            socket.setdefaulttimeout(60)
         elif method == "https":
-            self.conn = http.client.HTTPSConnection(url)
+            self.conn = http.client.HTTPSConnection(url, timeout=180)
+            socket.setdefaulttimeout(180)
         else:
             raise NotImplementedError("Connection Protocol {0:s} not supported".format(method))
 
@@ -74,15 +79,29 @@ class Elasticsearch(Backend):
         try:
             result = self._request(path='/cif.observables-*/observables/_search', body=query)
         except Exception as e:
-            raise LookupError("Failed to get observables.") from e
+            i = 0
+            for i in range(3):
+                try:
+                    result = self._request(path='/cif.observables-*/observables/_search', body=query)
+                    time.sleep(3)
+                    if result:
+                        break
+                except Exception as e:
+                    continue
+            if not result: 
+                raise LookupError("Failed to get observables.") from e
 
         if "hits" not in result.keys():
             raise RuntimeError("Not A properly formatted Elasticsearch result")
 
-        if len(result["hits"]["hits"]) == 0:
-            raise LookupError("No results from observable search")
-
         observables = []
+
+        if len(result["hits"]["hits"]) == 0:
+            if type is None:
+                raise LookupError("No results from observable search")
+            else:
+                return observables
+
         for hit in result["hits"]["hits"]:
             observables.append(self._object('observable', hit["_source"]))
 
@@ -289,28 +308,35 @@ class Elasticsearch(Backend):
             else:
                 args.append(json.dumps(body))
 
+#        self.logging.debug("Query search: {0}".format(args))   
+ 
         try:
             self.conn.request(method, *args)
         except Exception as e:
-            raise RuntimeError("Backend storage timed out responding.") from e
+            self.conn.close()
+            raise RuntimeError("Backend storage timed out responding : {0}.".format(type(e))) from e
 
         try:
             result = self.conn.getresponse()
         except Exception as e:
+            self.conn.close()
             raise RuntimeError('Backend error getting response.') from e
 
         if result.status >= 400:
+            self.conn.close()
             raise RuntimeError("Backend error. Got '{0:d} {1:s}' status from the backend.\
-            {2:s}".format(result.status, result.reason, result.readacontent.decode('ISO8859-1')))
+            {2:s}".format(result.status, result.reason, result.read().decode('ISO8859-1')))
 
         try:
             data = result.read().decode('ISO8859-1')
         except Exception as e:
+            self.conn.close()
             raise RuntimeError("Backend error. Couldn't read result from request") from e
 
         try:
             data = json.loads(data)
         except Exception as e:
+            self.conn.close()
             raise RuntimeError("Backend error. Couldn't load JSON data from request:") from e
 
         if "timed_out" in data.keys() and data["timed_out"]:
@@ -382,112 +408,117 @@ class Elasticsearch(Backend):
         """Install indexes into ElasticSearch
 
         """
-        observables = {"template": "cif.observables-*",
-                       "mappings": {
-                           "observables": {
-                               "properties": {
-                                   "@version": {
-                                       "index": "not_analyzed",
-                                       "type": "string"
-                                   },
-                                   "@timestamp": {
-                                       "type": "date"
-                                   },
-                                   "group": {
-                                       "type": "string",
-                                       "index": "not_analyzed"
-                                   },
-                                   "observable": {
-                                       "type": "string",
-                                       "index": "not_analyzed"
-                                   },
-                                   "otype": {
-                                       "type": "string"
-                                   },
-                                   "confidence": {
-                                       "type": "float",
-                                       "store": "yes"
-                                   },
-                                   "firsttime": {
-                                       "type": "date"
-                                   },
-                                   "lasttime": {
-                                       "type": "date"
-                                   },
-                                   "reporttime": {
-                                       "type": "date"
-                                   },
-                                   "provider": {
-                                       "type": "string",
-                                       "index": "not_analyzed"
-                                   },
-                                   "rdata": {
-                                       "type": "string",
-                                       "index": "not_analyzed"
-                                   },
-                                   "cc": {
-                                       "type": "string"
-                                   },
-                                   "portlist": {
-                                       "type": "integer"
-                                   },
-                                   "latitude": {
-                                       "type": "double"
-                                   },
-                                   "longitude": {
-                                       "type": "double"
-                                   },
-                                   "geolocation": {
-                                       "type": "geo_point"
+        if self.installed is not True:
+            observables = {"template": "cif.observables-*",
+                           "mappings": {
+                               "observables": {
+#                                   "dynamic" : "strict",
+                                   "properties": {
+                                       "@version": {
+                                           "index": "not_analyzed",
+                                           "type": "string"
+                                       },
+                                       "@timestamp": {
+                                           "type": "date"
+                                       },
+                                       "group": {
+                                           "type": "string",
+                                           "index": "not_analyzed"
+                                       },
+                                       "observable": {
+                                           "type": "string",
+                                           "index": "not_analyzed"
+                                       },
+                                       "otype": {
+                                           "type": "string"
+                                       },
+                                       "confidence": {
+                                           "type": "float",
+                                           "store": "yes"
+                                       },
+                                       "firsttime": {
+                                           "type": "date"
+                                       },
+                                       "lasttime": {
+                                           "type": "date"
+                                       },
+                                       "reporttime": {
+                                           "type": "date"
+                                       },
+                                       "provider": {
+                                           "type": "string",
+                                           "index": "not_analyzed"
+                                       },
+                                       "rdata": {
+                                           "type": "string",
+                                           "index": "not_analyzed"
+                                       },
+                                       "cc": {
+                                           "type": "string"
+                                       },
+                                       "portlist": {
+                                           "type": "integer"
+                                       },
+                                       "latitude": {
+                                           "type": "double"
+                                       },
+                                       "longitude": {
+                                           "type": "double"
+                                       },
+                                       "geolocation": {
+                                           "type": "geo_point"
+                                       }
                                    }
                                }
                            }
-                       }
-                       }
-
-        # Tokens data structure
-        tokens = {"template": "cif.tokens-*",
-                  "mappings": {
-                      "tokens": {
-                          "properties": {
-                              "@version": {
-                                  "index": "not_analyzed",
-                                  "type": "string"
-                              },
-                              "@timestamp": {
-                                  "type": "date",
-                                  "format": "date_time"
-                              },
-                              "username": {
-                                  "type": "string",
-                                  "index": "not_analyzed"
-                              },
-                              "groups": {
-                                  "type": "string"
-                              },
-                              "token": {
-                                  "type": "string"
-                              },
-                              "revoked": {
-                                  "type": "boolean"
-                              },
-                              "read": {
-                                  "type": "boolean"
-                              },
-                              "write": {
-                                  "type": "boolean"
-                              },
-                              "acl": {
-                                  "type": "string"
-                              },
-                              "expires": {
-                                  "type": "long"
+                           }
+    
+            # Tokens data structure
+            tokens = {"template": "cif.tokens-*",
+                      "mappings": {
+                          "tokens": {
+                              "properties": {
+                                  "@version": {
+                                      "index": "not_analyzed",
+                                      "type": "string"
+                                  },
+                                  "@timestamp": {
+                                      "type": "date",
+                                      "format": "date_time"
+                                  },
+                                  "username": {
+                                      "type": "string",
+                                      "index": "not_analyzed"
+                                  },
+                                  "groups": {
+                                      "type": "string"
+                                  },
+                                  "token": {
+                                      "type": "string"
+                                  },
+                                  "revoked": {
+                                      "type": "boolean"
+                                  },
+                                  "read": {
+                                      "type": "boolean"
+                                  },
+                                  "write": {
+                                      "type": "boolean"
+                                  },
+                                  "acl": {
+                                      "type": "string"
+                                  },
+                                  "expires": {
+                                      "type": "long"
+                                  }
                               }
                           }
                       }
-                  }
-                  }
+                      }
+    
+            # Make the requests to install the templates
+            self._request('/_template/cif_observables/', observables, 'PUT')
+            self._request('/_template/cif_tokens/', tokens, 'PUT')
+            self.logging.debug("Installing mapping")
+            self.installed = True
 
-        # Make the requests to install the templates
-        self._request('/_template/cif_observables/', observables, 'PUT')
-        self._request('/_template/cif_tokens/', tokens, 'PUT')

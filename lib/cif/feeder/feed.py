@@ -5,6 +5,7 @@ import datetime
 import gzip
 import tempfile
 import zipfile
+import copy
 
 import yaml
 import requests
@@ -165,7 +166,7 @@ class Feed(object):
                     feed_parsing_details['remote'], len(observables))
                 )
                 for observable in observables:
-                    tasks.put(observable)
+                    tasks.put(copy.deepcopy(observable))
 
         file_to_parse.close()
         self.logging.debug("Finished Parsing feed {0}".format(feed_parsing_details['remote']))

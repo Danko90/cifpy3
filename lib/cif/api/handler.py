@@ -4,6 +4,7 @@ import re
 import urllib.parse
 import json
 import cgi
+import copy
 
 import cif
 
@@ -265,7 +266,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.send_header('Location', '/token/{0}'.format(token.token))
             self.end_headers()
-            self.wfile.write(token.todict())
+            self.wfile.write(bytes(json.dumps(token.todict()), 'ISO8859-1'))
 
         elif request['object'] == "observable":
             if "observable" not in post_variables:
@@ -279,10 +280,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_error(422, 'Could not process observable: {0}'.format(e))
                 return
 
-            cif.worker.tasks.put(observable)
+            cif.worker.tasks.put(copy.deepcopy(observable))
             self.send_response(202)
             self.send_header('Location', '/observable/{0}'.format(observable.id))
             self.end_headers()
+            self.wfile.write(bytes(json.dumps(observable.todict()), 'ISO8859-1'))
 
     def do_DELETE(self):
         """Handles a DELETE HTTP request. Only tokens can be deleted at this time.

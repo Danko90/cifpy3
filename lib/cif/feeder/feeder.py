@@ -44,9 +44,7 @@ class Feeder(multiprocessing.Process):
                     else:
                         self.logging.error(repr(schedule.every().hour.at("00:00").do(feeds[feed_file].process, feed_name)))
                 else:
-                    self.logging.error(repr(schedule.every().hour.at("00:00").do(feeds[feed_file].process, feed_name)))
-                
-        
+                    self.logging.error(repr(schedule.every().hour.at("00:00").do(feeds[feed_file].process, feed_name)))        
     def run(self):
         while True:
             schedule.run_pending()

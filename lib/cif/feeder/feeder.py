@@ -33,18 +33,19 @@ class Feeder(multiprocessing.Process):
             self.logging.info("Loading Feed File: {0}".format(feed_file))
             feeds[feed_file] = cif.feeder.Feed(feed_file)
             self.logging.info("Scheduling Feed File:".format(feed_file))
-            for feed_name in feeds[feed_file].feed_config['feeds'].keys():
-                if "interval" in feeds[feed_file].feed_config['feeds'][feed_name]:
-                    if feeds[feed_file].feed_config['feeds'][feed_name]['interval'] == "hourly":
-                        self.logging.error(repr(schedule.every().hour.at("00:00").do(feeds[feed_file].process, feed_name)))
-                    elif feeds[feed_file].feed_config['feeds'][feed_name]['interval'] == "daily":
-                        self.logging.error(repr(schedule.every().day.at("00:00").do(feeds[feed_file].process, feed_name)))
-                    elif feeds[feed_file].feed_config['feeds'][feed_name]['interval'] == "weekly":
-                        self.logging.error(repr(schedule.every().day.at("00:00").do(feeds[feed_file].process, feed_name)))
+            if "feeds" in feeds[feed_file].feed_config:
+                for feed_name in feeds[feed_file].feed_config['feeds'].keys():
+                    if "interval" in feeds[feed_file].feed_config['feeds'][feed_name]:
+                        if feeds[feed_file].feed_config['feeds'][feed_name]['interval'] == "hourly":
+                            self.logging.error(repr(schedule.every().hour.at("00:00").do(feeds[feed_file].process, feed_name)))
+                        elif feeds[feed_file].feed_config['feeds'][feed_name]['interval'] == "daily":
+                            self.logging.error(repr(schedule.every().day.at("00:00").do(feeds[feed_file].process, feed_name)))
+                        elif feeds[feed_file].feed_config['feeds'][feed_name]['interval'] == "weekly":
+                            self.logging.error(repr(schedule.every().day.at("00:00").do(feeds[feed_file].process, feed_name)))
+                        else:
+                            self.logging.error(repr(schedule.every().hour.at("00:00").do(feeds[feed_file].process, feed_name)))
                     else:
                         self.logging.error(repr(schedule.every().hour.at("00:00").do(feeds[feed_file].process, feed_name)))
-                else:
-                    self.logging.error(repr(schedule.every().hour.at("00:00").do(feeds[feed_file].process, feed_name)))        
     def run(self):
         while True:
             schedule.run_pending()

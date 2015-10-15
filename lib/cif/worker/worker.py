@@ -46,12 +46,14 @@ class Thread(threading.Thread):
                     self.logging.debug("Running plugin: {0}".format(name))
                     result = plugin(observable=observable)
                     if result is not None:
-                        for newobservable in result:
-                            if newobservable.observable not in seen_observable:
-                                self.logging.debug("Found observable in the list : {0}".format(newobservable.observable))
-                                seen_observable.add(newobservable.observable)
-                                newobservables.append(newobservable)
-    
+                       if "feed_dedup" in cif.options:
+                          if newobservable.observable not in seen_observable:
+                             self.logging.debug("Found observable in the list : {0}".format(newobservable.observable))
+                             seen_observable.add(newobservable.observable)
+                             newobservables.append(newobservable)
+
+                          else:
+                              newobservables.append(newobservable)    
     
                 for name, meta in cif.worker.meta.meta.items():
                     for key, o in enumerate(newobservables):
@@ -62,15 +64,14 @@ class Thread(threading.Thread):
                 self.logging.debug("Sending {0} observables to be created.".format(len(newobservables)))
     
                 try:          
-                    for newobservable in reversed(newobservables):
-                        param = {"observable" : newobservable.observable}
-                        found_observables = self.backend.observable_search(param)
-                        if found_observables:
-                            newobservables.remove(newobservable)
+                    if "feed_dedup" in cif.options:        
+                        for newobservable in reversed(newobservables):
+                            param = {"observable" : newobservable.observable}
+                            found_observables = self.backend.observable_search(param, _from="worker")
+                            if found_observables:
+                                newobservables.remove(newobservable)
                     self.backend.observable_create(newobservables)
                 finally:
-#                # Make sure to release the lock even if we encounter but don't trap it. But if you use with you don't need to release the lock
-#                self.backendlock.release()
                     self.logging.debug("worker Loop: End")
 
 class QueueManager(threading.Thread):

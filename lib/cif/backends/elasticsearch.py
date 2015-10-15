@@ -56,7 +56,7 @@ class Elasticsearch(Backend):
         except Exception as e:
             raise RuntimeError("Ping failed") from e
 
-    def observable_search(self, params, start=None, number=None):
+    def observable_search(self, params, start=None, number=None, _from=None):
         """Uses a list of parameters to build a query and then return the objects from the ElasticSearch backend
 
         :param dict params: Parameters to use to build the search string
@@ -98,7 +98,7 @@ class Elasticsearch(Backend):
         observables = []
 
         if len(result["hits"]["hits"]) == 0:
-            if type is None:
+            if _from is None:
                 raise LookupError("No results from observable search")
             else:
                 return observables
@@ -108,6 +108,16 @@ class Elasticsearch(Backend):
 
         return observables
     
+    def observable_update(self, field, value, index):
+        """ Update a document
+        :param field: name of the field 
+        :param value: value 
+        """
+        query = []
+        # call function to compose your query
+        result = self._request(path='/cif.observables-*/observables/{0}/_'.format(index), body=query)
+
+
     def observable_clean(self, date):
         """Deletes all observables older than date
         

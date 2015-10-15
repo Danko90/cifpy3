@@ -16,11 +16,15 @@ class Backend(object):
         raise NotImplementedError("This must be implemented in the backend storage class")
 
     # Searches observables
-    def observable_search(self, params, start=None, number=None):
+    def observable_search(self, params, start=None, number=None, _from=None):
         raise NotImplementedError("This must be implemented in the backend storage class")
 
     # Creates a new observable
     def observable_create(self, observable):
+        raise NotImplementedError("This must be implemented in the backend storage class")
+
+    # Update an observable
+    def observable_update(self, field, value, index):
         raise NotImplementedError("This must be implemented in the backend storage class")
 
     # Cleans observables older than date

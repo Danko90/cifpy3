@@ -49,6 +49,7 @@ group.add_argument('--storage-connection', dest='storage_uri', nargs='?', type=s
                    default='http://127.0.0.1:9200', help='Connection string for connecting to the storage engine')
 
 group = parser.add_argument_group('Feed Options')
+group.add_argument('--feed-dedup', dest='feed_dedup', action="store_true", help='Remove duplicate results before inserting into ElasticSearch')
 group.add_argument('--feed-disable', dest='feed_disable', action="store_true", help='Disable Feeder program')
 group.add_argument('--feed-directory', dest='feed_directory', nargs='?', type=str,
                    default=os.path.join(cif.ETCDIR, 'feeds'), help='Read feed configurations from this directory')

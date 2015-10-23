@@ -4,6 +4,8 @@ import multiprocessing
 import threading
 import queue
 import time
+import datetime
+import dateutil.parser
 
 import cif
 
@@ -25,7 +27,6 @@ class Thread(threading.Thread):
         """
         self.logging.debug("Booted")
         while True:
-            #self.backendlock.acquire() 
             with self.backendlock:
                 observable = self.queue.get()
                 if observable is None:
@@ -39,22 +40,18 @@ class Thread(threading.Thread):
                 newobservables = []
                 seen_observable = set()
                 
-#               self.backendlock.acquire()
-                
-                
                 for name, plugin in cif.worker.plugins.plugins.items():
                     self.logging.debug("Running plugin: {0}".format(name))
                     result = plugin(observable=observable)
                     if result is not None:
-                       if "feed_dedup" in cif.options:
-                          if newobservable.observable not in seen_observable:
-                             self.logging.debug("Found observable in the list : {0}".format(newobservable.observable))
-                             seen_observable.add(newobservable.observable)
-                             newobservables.append(newobservable)
-
-                          else:
-                              newobservables.append(newobservable)    
-    
+                        for newobservable in result:
+                            if "feed_dedup" in cif.options:
+                                if newobservable.observable not in seen_observable:
+                                    self.logging.debug("Found observable in the list : {0}".format(newobservable.observable))
+                                    seen_observable.add(newobservable.observable)
+                                    newobservables.append(newobservable)
+                            else:
+                                newobservables.append(newobservable)    
                 for name, meta in cif.worker.meta.meta.items():
                     for key, o in enumerate(newobservables):
                         self.logging.debug("Fetching meta using: {0} for new observable: {1} having data : {2}".format(name, key, o.observable))
@@ -67,10 +64,13 @@ class Thread(threading.Thread):
                     if "feed_dedup" in cif.options:        
                         for newobservable in reversed(newobservables):
                             param = {"observable" : newobservable.observable}
-                            found_observables = self.backend.observable_search(param, _from="worker")
+                            found_observables, index, _id = self.backend.observable_search(param, _from="worker")
                             if found_observables:
+                                self.logging.debug("Seen duplicated observable ({0} with id {1}), updating the lasttime field..".format(newobservable.observable, newobservable._id))
+                                self.backend.observable_update("lasttime", datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ"), _id, index)
                                 newobservables.remove(newobservable)
-                    self.backend.observable_create(newobservables)
+                    if newobservables:
+                        self.backend.observable_create(newobservables)
                 finally:
                     self.logging.debug("worker Loop: End")
 

@@ -3,6 +3,7 @@ __author__ = 'James DeVincentis <james.d@hexhost.net>'
 import http.client
 import json
 import socket
+import os
 
 import datetime
 import dateutil.parser
@@ -101,22 +102,44 @@ class Elasticsearch(Backend):
             if _from is None:
                 raise LookupError("No results from observable search")
             else:
-                return observables
+                return observables, None, None
+
+        for hit in result["hits"]["hits"]:
+            index = hit["_index"]
+            _id = hit["_id"]
 
         for hit in result["hits"]["hits"]:
             observables.append(self._object('observable', hit["_source"]))
 
-        return observables
+        self.logging.debug("Result search : {0}".format(result))
+
+        return observables, index, _id
     
-    def observable_update(self, field, value, index):
+    def observable_update(self, field, value, observable_id, index):
         """ Update a document
         :param field: name of the field 
         :param value: value 
         """
-        query = []
-        # call function to compose your query
-        result = self._request(path='/cif.observables-*/observables/{0}/_'.format(index), body=query)
+        data = []
 
+        data.append({"update": {"_index": index, "_type": "observables", "_id": observable_id}})
+
+        data.append({"doc": {field : value}})
+
+        self.logging.debug("Update : {0} for index {1}".format(data, observable_id))
+
+        result = self._request(path='{0}/observables/_bulk'.format(index), body=data, method='POST')
+        results = []
+
+        for tmp in result["items"]:
+            if "error" in tmp.keys():
+                results.append((False, tmp.error))
+            else:
+                results.append((True, "success"))
+
+        self.logging.debug("Result update : {0}".format(results))
+
+        return results
 
     def observable_clean(self, date):
         """Deletes all observables older than date
@@ -153,6 +176,7 @@ class Elasticsearch(Backend):
             d["@timestamp"] = d["timestamp"]
             data.append(d)
 
+#        self.logging.debug("Create request : {0}".format(data))
         result = self._request(path='/_bulk', body=data, method='POST')
 
         results = []

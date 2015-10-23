@@ -24,7 +24,7 @@ class Backend(object):
         raise NotImplementedError("This must be implemented in the backend storage class")
 
     # Update an observable
-    def observable_update(self, field, value, index):
+    def observable_update(self, field, value, id_observable, index):
         raise NotImplementedError("This must be implemented in the backend storage class")
 
     # Cleans observables older than date

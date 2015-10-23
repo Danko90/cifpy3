@@ -44,12 +44,15 @@ class Address(Observable):
                     except Exception as e:
                         raise TypeError("PortList must be a list of integers") from e
 
-            for v in value:
+            for i,v in enumerate(value):
                 if not isinstance(v, int):
-                    raise TypeError("PortList item must be an integer")
-                if v > 65535:
+                    try:
+                        value[i] = int(v)
+                    except:
+                        raise TypeError("PortList item must be an integer")
+                if value[i] > 65535:
                     raise ValueError("PortList item cannot be greater than 65535")
-                if v < 0:
+                if value[i] < 0:
                     raise ValueError("PortList item cannot be less than 0")
         self._portlist = value
 

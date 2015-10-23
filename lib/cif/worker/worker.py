@@ -2,14 +2,14 @@ __author__ = 'James DeVincentis <james.d@hexhost.net>'
 
 import multiprocessing
 import threading
-import queue
 import time
 import datetime
 import dateutil.parser
+import queue
 
 import cif
 
-tasks = multiprocessing.Queue(131072)
+tasks = multiprocessing.Queue(262144)
 
 
 class Thread(threading.Thread):
@@ -81,6 +81,7 @@ class QueueManager(threading.Thread):
         self.destination = destination
         self.worker = worker
         self.die = False
+        self.logging = cif.logging.getLogger("Manager #{0}".format(worker))
 
     def run(self):
         """Runs in an infinite loop taking any tasks from the main queue and distributing it to the workers. First one
@@ -88,13 +89,17 @@ class QueueManager(threading.Thread):
 
         """
         while True:
+            self.logging.debug("Waiting for item from global queue: {0}".format(repr(self.source)))
             observable = self.source.get()
+#            self.logging.debug("Got {0} from global queue: {1}".format(repr(observable), observable.observable))
             if observable is None:
                 for i in range(1, cif.options.threads+1):
+                    self.logging.error("Mudering my threads")
                     self.destination.put(None)
                 self.die = True
                 break
             else:
+                self.logging.debug("Put {0} into local queue: {1}".format(repr(observable), observable.observable))
                 self.destination.put(observable)
 
 
@@ -105,7 +110,7 @@ class Process(multiprocessing.Process):
         self.backendlock = threading.Lock()
         self.name = name
         self.logging = cif.logging.getLogger("worker #{0}".format(name))
-        self.queue = queue.Queue(cif.options.threads*2)
+        self.queue = multiprocessing.Queue(cif.options.threads*2)
         self.threads = {}
 
     def run(self):
@@ -142,10 +147,12 @@ class Process(multiprocessing.Process):
                     break
                 queuemanager = QueueManager(self.name, tasks, self.queue)
                 queuemanager.start()
-
+            self.logging.debug("Local Queue Size: {0}".format(self.queue.qsize()))
+        
             for i in range(1, cif.options.threads+1):
                 if i not in self.threads or self.threads[i] is None or not self.threads[i].is_alive():
                     self.threads[i] = Thread(self.name, str(i), self.queue, self.backend, self.backendlock)
                     self.threads[i].start()
-
+                
+            
             time.sleep(5)

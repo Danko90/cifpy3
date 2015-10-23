@@ -10,6 +10,9 @@ import sys
 import json
 import csv
 import xml.etree.cElementTree
+import threading
+import math
+import queue
 
 import requests
 import requests.exceptions
@@ -27,6 +30,7 @@ group = parser.add_argument_group('Query Options')
 group.add_argument('--start', type=int, help="Start at record")
 group.add_argument('--count', type=int, help="Get this many records")
 group.add_argument('--chunk-size', type=int, help="Get x records at a time from the backend", default=10000)
+group.add_argument('--parallel', type=int, default=4, help="Make X requests at one time")
 
 # Debugging options not supported yet
 # group = parser.add_argument_group('Debugging Options')
@@ -72,42 +76,102 @@ else:
 if options["token"] is not None:
     headers['Authorization'] = options["token"]
 
-results = []
-
-while True:
-    try:
-        response = requests.get('{0}/observables?start={1}&count={2}&{3}'.format(
-            options['url'], options['start'], options['chunk_size'], options['query']), headers=headers, stream=True
-        )
-    except requests.exceptions.ConnectionError as e:
-        sys.stderr.write("[ERROR] Could not make request to CIF Server: {0}\n".format(e))
-        sys.exit(1)
-
-    if response.status_code == 200:
-
-        try:
-            result = json.loads(response.text)
-            results.extend(result)
-        except Exception as e:
-            raise RuntimeError("Could not fetch results from successful query") from e
-
-        options['start'] += len(result)
-
-        if options['end'] is not None:
-            if options['start'] >= options['end']:
-                break
-            elif options['start'] + options['chunk_size'] > options['end']:
-                options['chunk_size'] = options['end'] - options['start']
-        if len(result) < options['chunk_size']:
+results_lock = threading.Lock()
+request_queue = queue.Queue()
+results_list = []
+def do_request():
+    while True:
+        task = request_queue.get()
+        if task is None:
+            request_queue.task_done()
             break
+        try:
+            response = requests.get(task['url'], headers=headers, stream=True)
+        except requests.exceptions.ConnectionError as e:
+            sys.stderr.write("[ERROR] Could not make request to CIF Server: {0}\n".format(e))
+            request_queue.task_done()
+            continue
+        
+        if response.status_code == 200:
+            try:
+                result = json.loads(response.text)
+                results_lock.acquire()
+                results_list[task['index']] = result
+            except Exception as e:
+                raise RuntimeError("Could not fetch results from successful query") from e
+            finally:
+                results_lock.release()
+    
+        elif response.status_code == 404:
+            break
+        
+        elif response.status_code == 401:
+            raise RuntimeError("Invalid Authentication: {0}".format(response.text))
+    
+        elif response.status_code == 400:
+            raise RuntimeError("Invalid Query: {0}".format(response.text))
+            
+        request_queue.task_done()
 
-    elif response.status_code == 404:
-        break
-    elif response.status_code == 401:
-        raise RuntimeError("Invalid Authentication: {0}".format(response.text))
 
-    elif response.status_code == 400:
-        raise RuntimeError("Invalid Query: {0}".format(response.text))
+# Make a HEAD request to get the count of observables
+try:
+    response = requests.head('{0}/observables?{1}'.format(options['url'], options['query']), headers=headers)
+except requests.exceptions.ConnectionError as e:
+    sys.stderr.write("[ERROR] Could not make request to CIF Server: {0}\n".format(e))
+    sys.exit(1)
+observable_count = 0
+if response.status_code == 200:
+    observable_count = int(response.headers['content-length'])
+elif response.status_code == 404 or options['start'] > int(response.headers['content-length']):
+    observable_count = 0
+elif response.status_code == 401:
+    raise RuntimeError("Invalid Authentication: {0}".format(response.text))
+elif response.status_code == 400:
+    raise RuntimeError("Invalid Query: {0}".format(response.text))
+
+if options['end'] is not None:
+    # Calculate thee number of requests to make based on start / end options
+    request_count = math.ceil((options['end'] - options['start']) / options['chunk_size'])
+else:
+    # Calculate the number of requests we are going to have to make
+    request_count = math.ceil((observable_count - options['start']) / options['chunk_size'])
+
+
+for x in range(0, request_count):
+    results_list.append(None)
+
+for x in range(0, request_count):
+    request_queue.put({'index': x, 'url': '{0}/observables?start={1}&count={2}&{3}'.format(
+            options['url'], options['start'], options['chunk_size'], options['query'])})
+    
+    options['start'] += options['chunk_size']
+
+    if options['end'] is not None:
+        if options['start'] >= options['end']:
+                break
+        elif options['start'] + options['chunk_size'] > options['end']:
+                options['chunk_size'] = options['end'] - options['start']
+
+for x in range(0, options['parallel']):
+    request_queue.put(None)
+
+workers = []
+for x in range(0, options['parallel']):
+    worker = threading.Thread(target=do_request)
+    worker.daemon = True
+    worker.start()
+    workers.append(worker)
+    
+for worker in workers:
+    worker.join()
+    
+# Merge the results
+results = []
+for i,v in enumerate(results_list):
+    if v is None:
+        continue
+    results.extend(v)
 
 if options['write'] is not None:
     output_handle = open(options['write'], 'wt', newline='')

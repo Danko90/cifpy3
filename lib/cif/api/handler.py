@@ -26,6 +26,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # Connect to the backend
         self.server.logging.debug("Connecting to backend: {0}".format(cif.options.storage_uri))
         self.backend.connect(cif.options.storage_uri)
+        self.server.logging.info("Connected to backend: {0}".format(cif.options.storage_uri))
 
     def check_authentication(self):
         """Checks authentication for an incoming request
@@ -33,19 +34,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
         :returns: True on success, False on failure
         :rtype: bool
         """
-
+        self.server.logging.debug("Checking Authentication for {0}:{1}".format(self.client_address[0], self.client_address[1]))
         # If Authentication was disabled via the command line bypass the auth checks
         if "noauth" in cif.options and cif.options.noauth:
+            self.server.logging.debug("Noauth is enabled. Returning TRUE for for {0}:{1}".format(self.client_address[0], self.client_address[1]))
             return True
 
         if "Authorization" not in self.headers:
+            self.server.logging.debug("No Authorization header sent for {0}:{1}".format(self.client_address[0], self.client_address[1]))
             self.send_error(401, 'Not Authorized', 'No Token sent. It must be sent using the Authorization header.')
             return False
 
         if self.token is None:
+            self.server.logging.debug("Looking up Token '{0}' for {1}:{2}".format(self.headers['Authorization'], self.client_address[0], self.client_address[1]))
             try:
                 self.token = self.backend.token_get(self.headers['Authorization'])
             except LookupError as e:
+                self.server.logging.warning("Unauthorized token '{0}' attempting to be used by {1}:{2}".format(self.headers['Authorization'], self.client_address[0], self.client_address[1]))
                 self.send_error(401, 'Not Authorized', str(e))
                 return False
             except RuntimeError as e:
@@ -58,6 +63,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         # Check token expiration
         if self.token.expires is not None and self.token.expires <= datetime.datetime.utcnow():
+            self.server.logging.warning("Expired token '{0}' attempting to be used by {1}:{2}".format(self.headers['Authorization'], self.client_address[0], self.client_address[1]))
             self.send_error(401, 'Not Authorized', 'Token has expired.')
             return False
 
@@ -69,12 +75,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         :returns: True on success, False on failure
         :rtype: bool
         """
-
+        self.server.logging.debug("Checking admin authentication for {0}:{1}".format(self.client_address[0], self.client_address[1]))
         # If Authentication was disabled via the command line assume everyone is an admin
         if "noauth" in cif.options and cif.options.noauth:
+            self.server.logging.debug("Noauth is enabled. Returning admin TRUE for for {0}:{1}".format(self.client_address[0], self.client_address[1]))
             return True
 
         if not self.token.admin:
+            self.server.logging.debug("Non-Admin tried to do something from {0}:{1}".format(self.client_address[0], self.client_address[1]))
             self.send_error(403, 'Forbidden', 'Only admins can do this')
             return False
 
@@ -87,7 +95,60 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """
         self.send_error(400, 'Bad Request', 'Requested Path: "{0}" is not valid for this api.\n{0}'.format(self.path,
                                                                                                            error))
+    def do_HEAD(self):
+        """Processes GET requests. These will retrieve or search objects. Tokens can only be listed. Observables can be
+        searched.
 
+        """
+        self.connect_to_backend()
+        if not self.check_authentication():
+            return
+
+        # Run a regex match against the path for supported methods and queries
+        match = re.search(r'^/(?P<object>observables?)/?(?:\?(?P<query_string>.*))?$', self.path)
+
+        if match is None:
+            self.send_bad_request()
+            return
+
+        request = match.groupdict()
+
+        if request['object'] == "observables" and request['query_string'] is not None:
+            self.server.logging.debug("Observable search requested by '{0}:{1}' with query_string: '{2}'".format(self.client_address[0], self.client_address[1], request['query_string']))
+            # Parses an available query string into a dict
+            args = dict(
+                (k, v if len(v) > 1 else v[0]) for k, v in urllib.parse.parse_qs(request['query_string']).items()
+            )
+
+            if "noauth" not in cif.options or not cif.options.noauth:
+                if "group" in args:
+                    if not isinstance(args["group"], list):
+                        args["group"] = [args["group"]]
+                    for idx, group in enumerate(args["group"]):
+                        if group not in self.token.groups:
+                            del group[idx]
+                    if len(args["group"]) == 0:
+                        args["group"] = self.token.groups
+                else:
+                    args["group"] = self.token.groups
+
+            try:
+                self.server.logging.debug("Searching backend for query for {0}:{1}".format(self.client_address[0], self.client_address[1]))
+                count = self.backend.observable_search(args, count_only=True)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', count)
+                self.end_headers()
+            except LookupError as e:
+                self.server.logging.exception('404 Not Found')
+                self.send_error(404, 'Not Found', str(e))
+            except Exception as e:
+                self.server.logging.exception('500 Internal Server Error')
+                self.send_error(500, 'Internal Server Error', str(e))
+        else:
+            self.send_bad_request()
+        return
+    
     def do_GET(self):
         """Processes GET requests. These will retrieve or search objects. Tokens can only be listed. Observables can be
         searched.
@@ -107,58 +168,60 @@ class Handler(http.server.BaseHTTPRequestHandler):
         request = match.groupdict()
 
         if request['object'] == "observables" and request['query_string'] is not None:
+            self.server.logging.debug("Observable search requested by '{0}:{1}' with query_string: '{2}'".format(self.client_address[0], self.client_address[1], request['query_string']))
+            # Parses an available query string into a dict
+            args = dict(
+                (k, v if len(v) > 1 else v[0]) for k, v in urllib.parse.parse_qs(request['query_string']).items()
+            )
 
-                # Parses an available query string into a dict
-                args = dict(
-                    (k, v if len(v) > 1 else v[0]) for k, v in urllib.parse.parse_qs(request['query_string']).items()
-                )
-
-                if "noauth" not in cif.options or not cif.options.noauth:
-                    if "group" in args:
-                        if not isinstance(args["group"], list):
-                            args["group"] = [args["group"]]
-                        for idx, group in enumerate(args["group"]):
-                            if group not in self.token.groups:
-                                del group[idx]
-                        if len(args["group"]) == 0:
-                            args["group"] = self.token.groups
-                    else:
+            if "noauth" not in cif.options or not cif.options.noauth:
+                if "group" in args:
+                    if not isinstance(args["group"], list):
+                        args["group"] = [args["group"]]
+                    for idx, group in enumerate(args["group"]):
+                        if group not in self.token.groups:
+                            del group[idx]
+                    if len(args["group"]) == 0:
                         args["group"] = self.token.groups
+                else:
+                    args["group"] = self.token.groups
 
-                start = 0
-                count = 1000
+            start = 0
+            count = 1000
 
-                if "start" in args:
-                    if isinstance(args["start"], list):
-                        start = int(args["start"][-1])
-                    else:
-                        start = int(args["start"])
-                    del args['start']
+            if "start" in args:
+                if isinstance(args["start"], list):
+                    start = int(args["start"][-1])
+                else:
+                    start = int(args["start"])
+                del args['start']
 
-                if "count" in args:
-                    if isinstance(args["count"], list):
-                        count = int(args["count"][-1])
-                    else:
-                        count = int(args["count"])
-                    del args['count']
+            if "count" in args:
+                if isinstance(args["count"], list):
+                    count = int(args["count"][-1])
+                else:
+                    count = int(args["count"])
+                del args['count']
 
-                try:
-
-                    observables = self.backend.observable_search(args, start, count)
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(bytes('[', 'ISO8859-1'))
-                    for observable in observables[:-1]:
-                        self.wfile.write(bytes(json.dumps(observable.todict()) + ", ", 'ISO8859-1'))
-                    else:
-                        self.wfile.write(bytes(json.dumps(observables[-1].todict()), 'ISO8859-1'))
-                    self.wfile.write(bytes(']', 'ISO8859-1'))
-                except LookupError as e:
-                    self.send_error(404, 'Not Found', str(e))
-                except Exception as e:
-                    self.send_error(500, 'Internal Server Error', str(e))
-                    self.server.logging.exception('Exception while GET')
+            try:
+                self.server.logging.debug("Searching backend for query for {0}:{1}".format(self.client_address[0], self.client_address[1]))
+                observables = self.backend.observable_search(args, start, count)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(bytes('[', 'ISO8859-1'))
+                for observable in observables[:-1]:
+                    self.wfile.write(bytes(json.dumps(observable.todict()) + ", ", 'ISO8859-1'))
+                else:
+                    self.wfile.write(bytes(json.dumps(observables[-1].todict()), 'ISO8859-1'))
+                self.wfile.write(bytes(']', 'ISO8859-1'))
+            except LookupError as e:
+                self.server.logging.exception("404 Not Found")
+                self.send_error(404, 'Not Found', str(e))
+            except Exception as e:
+                self.server.logging.exception("500 Internal Server Error")
+                self.send_error(500, 'Internal Server Error', str(e))
+                self.server.logging.exception('Exception while GET')
 
         elif request['object'] == "tokens":
             if not self.is_admin():
@@ -279,8 +342,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_error(422, 'Could not process observable: {0}'.format(e))
                 return
-
-            cif.worker.tasks.put(copy.deepcopy(observable))
+            self.server.logging.debug("Put {0} into global queue: {1}".format(repr(observable), repr(cif.worker.tasks)))
+            cif.worker.tasks.put(observable)
+            cif.worker.tasks.close()
+            cif.worker.tasks.join_thread()
             self.send_response(202)
             self.send_header('Location', '/observable/{0}'.format(observable.id))
             self.end_headers()

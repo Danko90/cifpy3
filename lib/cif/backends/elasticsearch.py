@@ -57,7 +57,7 @@ class Elasticsearch(Backend):
         except Exception as e:
             raise RuntimeError("Ping failed") from e
 
-    def observable_search(self, params, start=None, number=None, _from=None):
+    def observable_search(self, params, start=None, number=None, _from=None, count_only=False):
         """Uses a list of parameters to build a query and then return the objects from the ElasticSearch backend
 
         :param dict params: Parameters to use to build the search string
@@ -65,12 +65,14 @@ class Elasticsearch(Backend):
         :type start: None or int
         :param number: Number of records to retrieve starting at :py:attr:`start`
         :type number: None or int
+        :param _from: string that indicates where the call comes from
+        :param boolean count_only: indicator to only return a count and not objects
         :return: List of retrieved observable objects (cif.type.Observable)
         :rtype: list
         :raises: LookupError
         :raises: RuntimeError
         """
-        query = self._build_search_string(params)
+        query = self._build_search_string(params, count_only=count_only)
 
         if start is not None:
             query["from"] = start
@@ -79,7 +81,10 @@ class Elasticsearch(Backend):
             query["size"] = number
 
         try:
-            result = self._request(path='/cif.observables-*/observables/_search', body=query)
+            if count_only:
+                result = self._request(path='/cif.observables-*/observables/_count', body=query)
+            else:
+                result = self._request(path='/cif.observables-*/observables/_search', body=query)
         except Exception as e:
             i = 0
             for i in range(3):
@@ -92,6 +97,11 @@ class Elasticsearch(Backend):
                     continue
             if not result: 
                 raise LookupError("Failed to get observables.") from e
+
+        if count_only:
+            if "count" not in result.keys():
+                raise RuntimeError("Not a properly formatted Elasticsearch count result")
+            return result['count']
 
         if "hits" not in result.keys():
             raise RuntimeError("Not A properly formatted Elasticsearch result")
@@ -371,8 +381,7 @@ class Elasticsearch(Backend):
 
         if result.status >= 400:
             self.conn.close()
-            raise RuntimeError("Backend error. Got '{0:d} {1:s}' status from the backend.\
-            {2:s}".format(result.status, result.reason, result.read().decode('ISO8859-1')))
+            raise RuntimeError("Backend error. Got '{0:d} {1:s}' status from the backend.".format(result.status, result.reason))
 
         try:
             data = result.read().decode('ISO8859-1')
@@ -392,7 +401,7 @@ class Elasticsearch(Backend):
         return data
 
     @staticmethod
-    def _build_search_string(params):
+    def _build_search_string(params, count_only=False):
         """Builds an ElasticSearch compatible search string
 
         :param dict params: Parameters to use for a search
@@ -439,6 +448,8 @@ class Elasticsearch(Backend):
                 a.append({"range": {param: {"gte": value}}})
         if len(neg):
             a.append({"not": {"filter": {"and": neg}}})
+        if count_only:
+            return {"query": {"filtered": {"filter": {"and": a}}}}
         return {"query": {"filtered": {"filter": {"and": a}}}, "sort": [{'@timestamp': {"order": "desc"}}]}
 
     def uninstall(self):

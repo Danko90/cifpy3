@@ -43,8 +43,8 @@ class Feeder(multiprocessing.Process):
                         self.logging.error(repr(schedule.every().day.at("00:00").do(feeds[feed_file].process, feed_name)))
                     elif feeds[feed_file].feed_config['feeds'][feed_name]['interval'] == "weekly":
                         self.logging.error(repr(schedule.every().day.at("00:00").do(feeds[feed_file].process, feed_name)))
-                    else:
-                        self.logging.error(repr(schedule.every(1).minute.do(feeds[feed_file].process, feed_name)))
+                else:
+                    self.logging.error(repr(schedule.every(1).minute.do(feeds[feed_file].process, feed_name)))
     def run(self):
         while True:
             schedule.run_pending()

@@ -132,7 +132,7 @@ if [[ OS_FREEBSD -gt 0 ]]; then
 
     # clone cifpy3 to /opt/
     echo "Cloning CIFpy3 to /usr/local/cifpy3"
-    git clone https://github.com/jmdevince/cifpy3.git /usr/local/cifpy3
+    git clone https://github.com/Danko90/cifpy3.git /usr/local/cifpy3
     if [[ $? -ne 0 ]]; then
         echo "[ERRROR] Could not clone cifpy3"
         exit
@@ -253,7 +253,7 @@ if [[ OS_CENTOS -gt 0 ]] || [[ OS_REDHAT -gt 0 ]]; then
 
     # clone cifpy3 to /opt/
     echo "Cloning CIFpy3 to /usr/local/cifpy3"
-    git clone https://github.com/jmdevince/cifpy3.git /usr/local/cifpy3
+    git clone https://github.com/Danko90/cifpy3.git /usr/local/cifpy3
     if [[ $? -ne 0 ]]; then
         echo "[ERRROR] Could not clone cifpy3"
         exit
@@ -385,7 +385,7 @@ if [[ OS_DEBIAN -gt 0 ]] || [[ OS_UBUNTU -gt 0 ]]; then
 
     # clone cifpy3 to /opt/
     echo "Cloning CIFpy3 to /usr/local/cifpy3"
-    git clone https://github.com/jmdevince/cifpy3.git /usr/local/cifpy3
+    git clone https://github.com/Danko90/cifpy3.git /usr/local/cifpy3
     if [[ $? -ne 0 ]]; then
         echo "[ERRROR] Could not clone cifpy3"
         exit

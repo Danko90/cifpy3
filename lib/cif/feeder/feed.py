@@ -118,9 +118,13 @@ class Feed(object):
 
             temp = tempfile.TemporaryFile(mode="w+b")
 
-            for chunk in response.iter_content(1024 * 1024):
-                temp.write(chunk)
-
+            try:
+                for chunk in response.iter_content(1024 * 1024):
+                    temp.write(chunk)
+            except:
+                self.logging.exception("Could not read the content of remote url '{0}'".format(feed_parsing_details["remote"]))
+                response.close()
+                return
             response.close()
 
             self.logging.debug("Wrote {0} bytes to binary file.".format(temp.tell()))

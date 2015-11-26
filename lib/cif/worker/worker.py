@@ -49,9 +49,23 @@ class Thread(threading.Thread):
                                 if newobservable.observable not in seen_observable:
                                     self.logging.debug("Found observable in the list : {0}".format(newobservable.observable))
                                     seen_observable.add(newobservable.observable)
+                                    if newobservable.firsttime is None or not newobservable.firsttime:
+                                        self.logging.debug("New observable seen, but firsttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
+                                        newobservable.firsttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
+                                    if newobservable.lasttime is None or not newobservable.lasttime:
+                                        self.logging.debug("New observable seen, but lasttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
+                                        newobservable.lasttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
                                     newobservables.append(newobservable)
                             else:
+                                if newobservable.firsttime is None or not newobservable.firsttime:
+                                    self.logging.debug("New observable seen, but firsttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
+                                    newobservable.firsttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
+                                if newobservable.lasttime is None or not newobservable.lasttime:
+                                    self.logging.debug("New observable seen, but lasttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
+                                    newobservable.lasttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
                                 newobservables.append(newobservable)    
+
+
                 for name, meta in cif.worker.meta.meta.items():
                     for key, o in enumerate(newobservables):
                         self.logging.debug("Fetching meta using: {0} for new observable: {1} having data : {2}".format(name, key, o.observable))

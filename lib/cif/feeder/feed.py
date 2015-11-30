@@ -13,6 +13,7 @@ import requests
 import cif
 from .parser import Parser
 from ..worker import tasks
+from pprint import pprint
 
 class Feed(object):
     def __init__(self, feed_file):
@@ -22,7 +23,7 @@ class Feed(object):
         self.logging = cif.logging.getLogger('FEED')
 
         try:
-            self.logging.debug("Opening Feed file for parsing")
+            self.logging.debug("Opening Feed file for parsing : {0}".format(self.feed_file))
             with open(self.feed_file, 'r') as stream:
                 self.logging.debug("Parsing feed file")
                 feed_config = yaml.load(stream)
@@ -67,9 +68,15 @@ class Feed(object):
         fields_to_strip = ['node', 'map', 'values', 'pattern', 'remote', 'parser',
                            'username', 'password', 'method', 'start', 'end', 'interval']
 
+#        for name in fields_to_strip:
+#            if name in self.feed_config["feeds"][feed_name].keys():
+#                pprint("{0} found in feed_config : {1}".format(name,feed_name))
+
         # Pull out parsing details for feeds from defined meta
         feed_parsing_details = dict((name, self.feed_config["feeds"][feed_name][name]) for name in fields_to_strip if name in self.feed_config["feeds"][feed_name].keys())
         feed_parsing_details['feed_name'] = feed_name
+
+#        pprint(feed_parsing_details)
 
         # Exclude control fields from defined meta for created observables
         feed_meta = dict((name, self.feed_config["feeds"][feed_name][name]) for name in self.feed_config["feeds"][feed_name].keys() if name not in fields_to_strip)
@@ -174,3 +181,14 @@ class Feed(object):
 
         file_to_parse.close()
         self.logging.debug("Finished Parsing feed {0}".format(feed_parsing_details['remote']))
+
+def dump(self, obj):
+        '''return a printable representation of an object for debugging'''
+        newobj=obj
+        if '__dict__' in dir(obj):
+            newobj=obj.__dict__
+        if ' object at ' in str(obj) and not newobj.has_key('__type__'):
+            newobj['__type__']=str(obj)
+        for attr in newobj:
+            newobj[attr]=self.dump(newobj[attr])
+        return newobj

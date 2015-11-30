@@ -34,7 +34,7 @@ class Feeder(multiprocessing.Process):
             feeds[feed_file] = cif.feeder.Feed(feed_file)
             self.logging.info("Scheduling Feed File: {0}".format(feed_file))
             if 'feeds' not in feeds[feed_file].feed_config:
-		self.logging.info("{0} does not contain feeds key".format(feed_file))
+                self.logging.info("{0} does not contain feeds key".format(feed_file))
                 continue
             for feed_name in feeds[feed_file].feed_config['feeds'].keys():
                 if "interval" in feeds[feed_file].feed_config['feeds'][feed_name]:

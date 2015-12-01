@@ -34,7 +34,7 @@ parser.add_argument('--threads-per-worker', dest='threads', nargs='?', type=int,
                     help='specify the number of threads per worker')
 parser.add_argument('--logfile', dest='logfile', nargs='?', type=str, default=os.path.join(cif.LOGDIR, 'cif-server.log'))
 parser.add_argument('--loglevel', dest='loglevel', nargs='?', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                   default='DEBUG')
+                   default='INFO')
 group = parser.add_argument_group('Server Options')
 group.add_argument('--listen', dest='host', nargs='?', type=str, default='0.0.0.0',
                    help='Host to listen on')

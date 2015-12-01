@@ -179,7 +179,7 @@ class Elasticsearch(Backend):
         data = []
         for index, observable in enumerate(observables):
             data.append({"create": {"_index": "cif.observables-{0}".format(
-                dateutil.parser.parse(observable.timestamp).strftime("%Y.%m.%d")
+                datetime.datetime.utcnow().strftime("%Y.%m.%d")
             ), "_type": "observables", "_id": observable.id}})
 
             d = observable.todict()

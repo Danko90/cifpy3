@@ -252,7 +252,8 @@ class Observable(Base):
                 elif cif.types.is_binary(self.observable):
                     self.otype = 'binary'
                 pass
-        self._otype = value.lower()
+        if value is not None:
+            self._otype = value.lower()
 
     @property
     def reporttime(self):

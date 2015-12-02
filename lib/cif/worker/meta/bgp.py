@@ -62,7 +62,7 @@ def process(observable=None):
             for record in dns.resolver.query(peer_lookup, 'TXT').response.answer:
                 for item in record:
                     tmp = [x.strip() for x in str(item).strip('"').split('|')]
-                    peer = {"asn": tmp[0].split(" ")[0], "cc": tmp[2], "prefix": tmp[1], "rir": tmp[3], "date": tmp[4]}
+                    peer = {"asn": tmp[0].split(" ")[0], "cc": tmp[2], "prefix": tmp[1], "rir": tmp[3], "date": tmp[4] if tmp[4] else None}
         except:
             pass
         try:

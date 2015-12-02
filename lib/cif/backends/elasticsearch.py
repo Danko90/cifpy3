@@ -73,6 +73,7 @@ class Elasticsearch(Backend):
         :raises: RuntimeError
         """
         query = self._build_search_string(params, count_only=count_only)
+        result = []
 
         if start is not None:
             query["from"] = start

@@ -25,6 +25,7 @@ class Thread(threading.Thread):
         these running at any one given time.
 
         """
+        self.state = False
         self.logging.debug("Booted")
         while True:
             with self.backendlock:
@@ -85,8 +86,11 @@ class Thread(threading.Thread):
                                 newobservables.remove(newobservable)
                     if newobservables:
                         self.backend.observable_create(newobservables)
+                except Exception as e:
+                    self.logging.error("Failed to create observable")
                 finally:
                     self.logging.debug("worker Loop: End")
+
 
 class QueueManager(threading.Thread):
     def __init__(self, worker, source, destination):

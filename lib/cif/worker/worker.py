@@ -1,5 +1,6 @@
 __author__ = 'James DeVincentis <james.d@hexhost.net>'
 
+
 import multiprocessing
 import threading
 import time
@@ -125,7 +126,7 @@ class Process(multiprocessing.Process):
     def __init__(self, name):
         multiprocessing.Process.__init__(self)
         self.backend = None
-        self.backendlock = threading.Lock()
+        self.backendlock = threading.RLock()
         self.name = name
         self.logging = cif.logging.getLogger("worker #{0}".format(name))
         self.queue = queue.Queue(cif.options.threads*2)
@@ -169,6 +170,7 @@ class Process(multiprocessing.Process):
         
             for i in range(1, cif.options.threads+1):
                 if i not in self.threads or self.threads[i] is None or not self.threads[i].is_alive():
+                    self.logging.debug("Starting thread {0}".format(i))
                     self.threads[i] = Thread(self.name, str(i), self.queue, self.backend, self.backendlock)
                     self.threads[i].start()
                 

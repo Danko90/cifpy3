@@ -34,7 +34,7 @@ parser.add_argument('--threads-per-worker', dest='threads', nargs='?', type=int,
                     help='specify the number of threads per worker')
 parser.add_argument('--logfile', dest='logfile', nargs='?', type=str, default=os.path.join(cif.LOGDIR, 'cif-server.log'))
 parser.add_argument('--loglevel', dest='loglevel', nargs='?', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                   default='INFO')
+                   default='DEBUG')
 group = parser.add_argument_group('Server Options')
 group.add_argument('--listen', dest='host', nargs='?', type=str, default='0.0.0.0',
                    help='Host to listen on')
@@ -124,14 +124,17 @@ while True:
     logger.info("Monitoring Loop: Checking Workers")
     logger.debug("Global Queue Size: {0}".format(cif.worker.tasks.qsize()))
     for i in range(1, cif.options.workers+1):
-        logger.info("Monitoring Loop: Checking worker {0}".format(i))
-        if i not in workers or workers[i] is None or not workers[i].is_alive():
-            if i in workers and workers[i] is not None:
-                logger.error("Monitoring Loop: worker #{0} died or not started. Restarting.".format(i))
-            workers[i] = cif.worker.Process(str(i))
-            workers[i].daemon = 1
-            workers[i].start()
-
+        try:
+            logger.info("Monitoring Loop: Checking worker {0}".format(i))
+            if i not in workers or workers[i] is None or not workers[i].is_alive():
+                if i in workers and workers[i] is not None:
+                    logger.error("Monitoring Loop: worker #{0} died or not started. Restarting.".format(i))
+                workers[i] = cif.worker.Process(str(i))
+                workers[i].daemon = 1
+                workers[i].start()
+        except Exception as e:
+            logger.error("Error starting thread")
+            continue
     cif.logging.info("Monitoring Loop: Checking api Server")
     if api is None or not api.is_alive():
         if api is not None:

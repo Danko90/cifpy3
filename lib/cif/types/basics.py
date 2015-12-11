@@ -3,6 +3,7 @@ __author__ = 'James DeVincentis <james.d@hexhost.net>'
 import ipaddress
 import os
 import re
+import email.utils
 import cif
 
 hash_types = {
@@ -17,8 +18,7 @@ hash_types = {
 regex = {
     'url': re.compile('^(http|https|smtp|ftp|sftp)://(\S*\.\S*)$'),
     'url_2': re.compile(r'^([a-z0-9.-]+[a-z]{2,63}|\b(?:\d{1,3}\.){3}\d{1,3}\b)(:(\d+))?/+'),
-    'fqdn': re.compile('^((xn--)?(--)?[a-zA-Z0-9-_]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}(--p1ai)?$'),
-    'email' : re.compile('^.*@.*\..*$')
+    'fqdn': re.compile('^((xn--)?(--)?[a-zA-Z0-9-_]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}(--p1ai)?$')
 }
 
 
@@ -178,7 +178,10 @@ def is_url(value):
     :return: True on successful parse of a URL, False on invalid URL
     :rtype bool:
     """
-    return regex['url'].match(value) is not None or regex['url_2'].match(value) is not None
+    try:
+        return regex['url'].match(value) is not None or regex['url_2'].match(value) is not None
+    except Exception:
+        return False
 
 
 def is_fqdn(value):
@@ -189,7 +192,10 @@ def is_fqdn(value):
     :return: True on successful parse of an FQDN, False on invalid FQDN
     :rtype bool:
     """
-    return regex['fqdn'].match(value) is not None
+    try:
+        return regex['fqdn'].match(value) is not None
+    except Exception:
+        return False
 
 
 def is_email(value):
@@ -200,7 +206,12 @@ def is_email(value):
     :return: True on successful parse of an Email address, False on invalid Email Address
     :rtype bool:
     """
-    return regex['email'].match(value) is not None
+    result = email.utils.parseaddr(value)
+    if len(result[0]) == 0 or len(result[1]) == 0:
+        return False
+    if '.' not in result[1]:
+        return False
+    return True
 
 
 def is_asn(value):
@@ -211,8 +222,10 @@ def is_asn(value):
     :return: True on successful check of ASN number
     :rtype bool:
     """
-    return (isinstance(value, int) or int(value)) and int(value) <= (2 ** 32 - 1)
-
+    try:
+        return (isinstance(value, int) or int(value)) and int(value) <= (2 ** 32 - 1)
+    except Exception:
+        return False
 
 def is_hash(value):
     """Checks to see if a value is a valid hash
@@ -222,8 +235,10 @@ def is_hash(value):
     :return: True on successful parse of an hash, False on invalid hash
     :rtype bool:
     """
-    return hash_type(value) is not None
-
+    try:
+        return hash_type(value) is not None
+    except Exception:
+        return False
 
 def is_binary(value):
     """Determines if value is a path to a binary file
@@ -255,3 +270,4 @@ def hash_type(value):
         if pattern.match(value) is not None:
             return htype
     return None
+

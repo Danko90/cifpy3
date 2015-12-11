@@ -48,5 +48,9 @@ class Feeder(multiprocessing.Process):
                     self.logging.info(repr(schedule.every(1).minute.do(feeds[feed_file].process, feed_name)))
     def run(self):
         while True:
-            schedule.run_pending()
-            time.sleep(1)
+            try:
+                schedule.run_pending()
+                time.sleep(1)
+            except Exception as e:
+                self.logging.error("Schedule dead, restarting")
+                continue

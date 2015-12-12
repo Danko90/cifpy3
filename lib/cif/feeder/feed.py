@@ -13,7 +13,6 @@ import requests
 import cif
 from .parser import Parser
 from ..worker import tasks
-from pprint import pprint
 
 class Feed(object):
     def __init__(self, feed_file):
@@ -21,7 +20,6 @@ class Feed(object):
         self.feed_config = {}
         self.parser = None
         self.logging = cif.logging.getLogger('FEED')
-        self.failed = False
 
         try:
             self.logging.debug("Opening Feed file for parsing : {0}".format(self.feed_file))
@@ -57,27 +55,22 @@ class Feed(object):
             
     def process(self, feed_name):
         """Retrieves the feed, passes it to a parser, and then passes parsed observables to the workers
+
         :return:
         """
-        self.logging.debug("Executing feed process ..")
         if "feeds" not in self.feed_config.keys():
-            self.logging.debug("feeds not in feed_config.keys(), aborting  ..")
             return
         if feed_name not in self.feed_config['feeds']:
-            self.logging.debug("feed_name not in feed_config[feeds], aborting  ..")
             return
         
         # These are fields that are used for control when parsing and should not be passed down to the observables
         fields_to_strip = ['node', 'map', 'values', 'pattern', 'remote', 'parser',
                            'username', 'password', 'method', 'start', 'end', 'interval']
 
-#        for name in fields_to_strip:
-#            if name in self.feed_config["feeds"][feed_name].keys():
-#                pprint("{0} found in feed_config : {1}".format(name,feed_name))
         # Pull out parsing details for feeds from defined meta
         feed_parsing_details = dict((name, self.feed_config["feeds"][feed_name][name]) for name in fields_to_strip if name in self.feed_config["feeds"][feed_name].keys())
         feed_parsing_details['feed_name'] = feed_name
-#        pprint(self.dump(feed_parsing_details))
+
         # Exclude control fields from defined meta for created observables
         feed_meta = dict((name, self.feed_config["feeds"][feed_name][name]) for name in self.feed_config["feeds"][feed_name].keys() if name not in fields_to_strip)
 
@@ -111,80 +104,79 @@ class Feed(object):
             }
             try:
                 response = requests.request(feed_parsing_details["method"], feed_parsing_details["remote"],
-                                            proxies=cif.proxies, stream=True, headers=headers, verify=False
+                                            proxies=cif.proxies, stream=True, headers=headers, verify=False, timeout=10
                                             )
             except:
                 self.logging.exception("Could not fetch remote url '{0}'".format(feed_parsing_details["remote"]))
-                tasks.put(None)
-                self.failed = True
-#                return
+                return
 
-            if not self.failed and response.status_code > 300:
+            if response is None:
+                self.logging.error("Failed fetching remote feed '{0}': Timed out".format(
+                    feed_parsing_details["remote"])
+                )          
+                return
+
+            if response.status_code > 300:
                 self.logging.error("Failed fetching remote feed '{0}': {1} {2}".format(
                     feed_parsing_details["remote"], response.status_code, response.reason)
                 )
-                tasks.put(None)     
-                self.failed = True           
-#                return
+                return
 
-            if not self.failed:
-                temp = tempfile.TemporaryFile(mode="w+b")
-                try:
-                    for chunk in response.iter_content(1024 * 1024):
-                        temp.write(chunk)
-                except:
-                    self.logging.exception("Could not read the content of remote url '{0}'".format(feed_parsing_details["remote"]))
-                    response.close()
-                    tasks.put(None)
-    #                return
-    
+            temp = tempfile.TemporaryFile(mode="w+b")
+
+            try:
+                for chunk in response.iter_content(1024 * 1024):
+                    temp.write(chunk)
+            except:
+                self.logging.exception("Could not read the content of remote url '{0}'".format(feed_parsing_details["remote"]))
                 response.close()
-    
-                self.logging.debug("Wrote {0} bytes to binary file.".format(temp.tell()))
-    
-                temp.seek(0)
-                
-        if not self.failed:
-            zip_file = None
-            if zipfile.is_zipfile(temp):
-                zip_file = zipfile.ZipFile(temp)
-                temp_bin = zip_file.open(zip_file.namelist()[0])
+                return
+            response.close()
+
+            self.logging.debug("Wrote {0} bytes to binary file.".format(temp.tell()))
+
+            temp.seek(0)
+
+        zip_file = None
+        if zipfile.is_zipfile(temp):
+            zip_file = zipfile.ZipFile(temp)
+            temp_bin = zip_file.open(zip_file.namelist()[0])
+        else:
+            temp_bin = temp
+            temp_bin.seek(0)
+
+        if zip_file is None:
+            test_header = temp.read(2)
+            temp.seek(0)
+            if test_header == b'\x1f\x8b':
+                temp_bin = gzip.open(temp)
             else:
                 temp_bin = temp
-                temp_bin.seek(0)
-    
-            if zip_file is None:
-                test_header = temp.read(2)
-                temp.seek(0)
-                if test_header == b'\x1f\x8b':
-                    temp_bin = gzip.open(temp)
-                else:
-                    temp_bin = temp
-    
-            file_to_parse = tempfile.TemporaryFile(mode="w+", encoding="ISO8859-1")
-            while True:
-                buf = temp_bin.read(1024 * 1024)
-                if len(buf) == 0:
-                    break
-                file_to_parse.write(buf.decode("ISO8859-1"))
-            self.logging.debug("Wrote {0} bytes to text file.".format(file_to_parse.tell()))
-            file_to_parse.seek(0)
-    
-            if zip_file is not None:
-                zip_file.close()
-            temp_bin.close()
-    
-            self.logging.debug("Creating Parser for feed {0}".format(feed_parsing_details['remote']))
-            self.parser = Parser(parsing_details=feed_parsing_details, basemeta=feed_meta, file=file_to_parse)
-    
-            while self.parser.parsing:
-                observables = self.parser.parsefile(2000)
-                if len(observables) > 0:
-                    self.logging.debug("Feed '{0}' is sending {1} new objects to be processed".format(
-                        feed_parsing_details['remote'], len(observables))
-                    )
-                    for observable in observables:
-                        tasks.put(copy.deepcopy(observable))
-    
-            file_to_parse.close()
-            self.logging.debug("Finished Parsing feed {0}".format(feed_parsing_details['remote']))
+
+        file_to_parse = tempfile.TemporaryFile(mode="w+", encoding="ISO8859-1")
+        while True:
+            buf = temp_bin.read(1024 * 1024)
+            if len(buf) == 0:
+                break
+            file_to_parse.write(buf.decode("ISO8859-1"))
+        self.logging.debug("Wrote {0} bytes to text file.".format(file_to_parse.tell()))
+        file_to_parse.seek(0)
+
+        if zip_file is not None:
+            zip_file.close()
+        temp_bin.close()
+
+        self.logging.debug("Creating Parser for feed {0}".format(feed_parsing_details['remote']))
+        self.parser = Parser(parsing_details=feed_parsing_details, basemeta=feed_meta, file=file_to_parse)
+
+        while self.parser.parsing:
+            observables = self.parser.parsefile(2000)
+            if len(observables) > 0:
+                self.logging.debug("Feed '{0}' is sending {1} new objects to be processed".format(
+                    feed_parsing_details['remote'], len(observables))
+                )
+                for observable in observables:
+                    tasks.put(copy.deepcopy(observable))
+
+        file_to_parse.close()
+        self.logging.debug("Finished Parsing feed {0}".format(feed_parsing_details['remote']))

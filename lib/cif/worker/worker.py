@@ -81,6 +81,8 @@ class Thread(threading.Thread):
                         self.logging.debug("Fetching meta using: {0} for new observable: {1} having data : {2}".format(name, key, o.observable))
                         newobservables[key] = meta(observable=o)
     
+                if not newobservables:
+                    newobservables.insert(0, observable)
 #                newobservables.insert(0, observable)
                 self.logging.debug("Sending {0} observables to be created.".format(len(newobservables)))
     

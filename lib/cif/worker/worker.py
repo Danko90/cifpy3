@@ -29,9 +29,17 @@ class Thread(threading.Thread):
         self.state = False
         self.logging.debug("Booted")
         while True:
+            self.logging.debug("Trying to acquire lock")
             with self.backendlock:
-                observable = self.queue.get()
+                self.logging.debug("Lock acquired")
+                observable = None
+                try:
+                    observable = self.queue.get(timeout=5)
+                except queue.Empty:
+                    # Handle empty queue here
+                    pass
                 if observable is None:
+                    self.logging.debug("Observable is None, breaking loop...")
                     break
                 self.logging.debug("Thread Loop: Got observable")
     

@@ -82,8 +82,13 @@ class Thread(threading.Thread):
                         newobservables[key] = meta(observable=o)
     
                 if not newobservables:
+                    if observable.firsttime is None or not observable.firsttime:
+                        self.logging.debug("New observable seen, but firsttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
+                        observable.firsttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
+                    if observable.lasttime is None or not observable.lasttime:
+                        self.logging.debug("New observable seen, but lasttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
+                        observable.lasttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
                     newobservables.insert(0, observable)
-#                newobservables.insert(0, observable)
                 self.logging.debug("Sending {0} observables to be created.".format(len(newobservables)))
     
                 try:          

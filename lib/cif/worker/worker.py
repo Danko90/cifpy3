@@ -1,12 +1,11 @@
 __author__ = 'James DeVincentis <james.d@hexhost.net>'
 
-
 import multiprocessing
 import threading
+import queue
 import time
 import datetime
 import dateutil.parser
-import queue
 
 import cif
 
@@ -14,6 +13,7 @@ tasks = multiprocessing.Queue(262144)
 
 
 class Thread(threading.Thread):
+    
     def __init__(self, worker, name, q, backend, backendlock):
         threading.Thread.__init__(self)
         self.backend = backend
@@ -26,9 +26,9 @@ class Thread(threading.Thread):
         these running at any one given time.
 
         """
-        self.state = False
         self.logging.debug("Booted")
         while True:
+            #self.backendlock.acquire()
             self.logging.debug("Trying to acquire lock")
             with self.backendlock:
                 self.logging.debug("Lock acquired")
@@ -48,7 +48,7 @@ class Thread(threading.Thread):
                     observable = meta(observable=observable)
     
                 newobservables = []
-                seen_observable = set()
+                seen_observable = set()    
                 
                 for name, plugin in cif.worker.plugins.plugins.items():
                     self.logging.debug("Running plugin: {0}".format(name))
@@ -59,46 +59,37 @@ class Thread(threading.Thread):
                                 if newobservable.observable not in seen_observable:
                                     self.logging.debug("Found observable in the list : {0}".format(newobservable.observable))
                                     seen_observable.add(newobservable.observable)
-                                    if newobservable.firsttime is None or not newobservable.firsttime:
-                                        self.logging.debug("New observable seen, but firsttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
-                                        newobservable.firsttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
-                                    if newobservable.lasttime is None or not newobservable.lasttime:
-                                        self.logging.debug("New observable seen, but lasttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
-                                        newobservable.lasttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
+                                    newobservable = self.updateFirstLastTime(newobservable)       
                                     newobservables.append(newobservable)
+    #                            else:
+    #                                self.logging.debug("Found the same observable in the list : {0}, it will be deleted".format(newobservable.observable))
                             else:
-                                if newobservable.firsttime is None or not newobservable.firsttime:
-                                    self.logging.debug("New observable seen, but firsttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
-                                    newobservable.firsttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
-                                if newobservable.lasttime is None or not newobservable.lasttime:
-                                    self.logging.debug("New observable seen, but lasttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
-                                    newobservable.lasttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
-                                newobservables.append(newobservable)    
-
-
+                                newobservable = self.updateFirstLastTime(newobservable)
+                                newobservables.append(newobservable)
+    
                 for name, meta in cif.worker.meta.meta.items():
                     for key, o in enumerate(newobservables):
-                        self.logging.debug("Fetching meta using: {0} for new observable: {1} having data : {2}".format(name, key, o.observable))
+#                        self.logging.debug("Fetching meta using: {0} for new observable: {1} having data : {2}".format(name, key, o.observable))
                         newobservables[key] = meta(observable=o)
-    
                 if not newobservables:
-                    if observable.firsttime is None or not observable.firsttime:
-                        self.logging.debug("New observable seen, but firsttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
-                        observable.firsttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
-                    if observable.lasttime is None or not observable.lasttime:
-                        self.logging.debug("New observable seen, but lasttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
-                        observable.lasttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
+                    observable = self.updateFirstLastTime(observable)
                     newobservables.insert(0, observable)
                 self.logging.debug("Sending {0} observables to be created.".format(len(newobservables)))
     
-                try:          
+                try:  
                     if "feed_dedup" in cif.options:        
                         for newobservable in reversed(newobservables):
                             param = {"observable" : newobservable.observable}
                             found_observables, index, _id = self.backend.observable_search(param, _from="worker")
                             if found_observables:
-                                self.logging.debug("Seen duplicated observable ({0} with id {1}), updating the lasttime field..".format(newobservable.observable, newobservable._id))
+                                self.logging.debug("Seen duplicated observable ({0} with id {1}), updating the lasttime field..".format(newobservable.observable, _id))
                                 self.backend.observable_update("lasttime", datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ"), _id, index)
+                                for found_observable in found_observables:
+                                    tags = list(set(newobservable.tags) - set(found_observable.tags))
+                                    self.logging.debug("Differences between the two tags arrays : {0}".format(tags))
+                                    if tags:
+                                        new_tags = found_observable.tags + tags
+                                        self.backend.observable_update("tags", new_tags, _id, index)
                                 newobservables.remove(newobservable)
                     if newobservables:
                         self.backend.observable_create(newobservables)
@@ -106,7 +97,17 @@ class Thread(threading.Thread):
                     self.logging.error("Failed to create observable")
                 finally:
                     self.logging.debug("worker Loop: End")
-
+                    
+    
+    def updateFirstLastTime(self, observable):
+        if observable.firsttime is None or not observable.firsttime:
+            self.logging.debug("New observable seen, but firsttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
+            observable.firsttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")
+        if observable.lasttime is None or not observable.lasttime:
+            self.logging.debug("New observable seen, but lasttime is invalid, I will update it with : {0}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ")))
+            observable.lasttime = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%I:%SZ") 
+            
+        return observable     
 
 class QueueManager(threading.Thread):
     def __init__(self, worker, source, destination):
@@ -125,10 +126,9 @@ class QueueManager(threading.Thread):
         while True:
             self.logging.debug("Waiting for item from global queue: {0}".format(repr(self.source)))
             observable = self.source.get()
-#            self.logging.debug("Got {0} from global queue: {1}".format(repr(observable), observable.observable))
             if observable is None:
                 for i in range(1, cif.options.threads+1):
-                    self.logging.error("Mudering my threads")
+                    self.logging.error("Murdering my threads")
                     self.destination.put(None)
                 self.die = True
                 break
@@ -153,7 +153,7 @@ class Process(multiprocessing.Process):
         the backend lock.
 
         """
-
+        
         self.logging.info("Starting")
 
         backend = __import__("cif.backends.{0:s}".format(cif.options.storage.lower()),
@@ -166,9 +166,10 @@ class Process(multiprocessing.Process):
 
         self.backend.connect(cif.options.storage_uri)
         self.logging.debug("Connected to Backend {0}".format(cif.options.storage_uri))
+        
+        #self.backend.install()
 
-        backend_installed = True
-
+        
         self.threads = {}
         queuemanager = None
 
@@ -182,12 +183,12 @@ class Process(multiprocessing.Process):
                 queuemanager = QueueManager(self.name, tasks, self.queue)
                 queuemanager.start()
             self.logging.debug("Local Queue Size: {0}".format(self.queue.qsize()))
-        
+            
             for i in range(1, cif.options.threads+1):
                 if i not in self.threads or self.threads[i] is None or not self.threads[i].is_alive():
                     self.logging.debug("Starting thread {0}".format(i))
                     self.threads[i] = Thread(self.name, str(i), self.queue, self.backend, self.backendlock)
                     self.threads[i].start()
-                
-            
+
             time.sleep(5)
+

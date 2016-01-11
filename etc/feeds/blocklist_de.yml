@@ -14,26 +14,44 @@ feeds:
   ssh:
     remote: http://lists.blocklist.de/lists/ssh.txt
     application: ssh
+    description: 'SSH blocklist'
+    interval: hourly
   mail:
     remote: http://lists.blocklist.de/lists/mail.txt
     application: smtp
+    description: 'SMTP blocklist'
+    interval: hourly
   apache:
     remote: http://lists.blocklist.de/lists/apache.txt
     application: http
+    description: 'HTTP blocklist'
+    interval: hourly
   imap:
     remote: http://lists.blocklist.de/lists/imap.txt
     application: imap
+    description: 'IMAP blocklist'
+    interval: hourly
   ftp:
     remote: http://lists.blocklist.de/lists/ftp.txt
     application: ftp
+    description: 'FTP blocklist'
+    interval: hourly
   sip:
     remote: http://lists.blocklist.de/lists/sip.txt
     application: sip
+    description: 'SIP blocklist'
+    interval: hourly
   bots:
     remote: http://lists.blocklist.de/lists/bots.txt
     tags:
-      - bot
+      - botnet
+    description: 'Bot Communication blocklist'
+    interval: hourly
   bruteforcelogin:
     remote: http://lists.blocklist.de/lists/bruteforcelogin.txt
+    description: 'Bruteforce Login blocklist'
+    interval: hourly
   ircbot:
     remote: http://lists.blocklist.de/lists/ircbot.txt
+    description: 'IRC Bot blocklist'
+    interval: hourly

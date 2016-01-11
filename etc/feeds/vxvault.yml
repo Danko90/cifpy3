@@ -4,6 +4,7 @@ defaults:
   tlp: green
   altid_tlp: white
   tags: malware
+  interval: hourly
   values:
     - observable
 

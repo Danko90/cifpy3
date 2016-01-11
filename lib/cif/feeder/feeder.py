@@ -5,6 +5,7 @@ import multiprocessing
 import time
 
 import schedule
+import setproctitle
 
 import cif
 
@@ -46,7 +47,13 @@ class Feeder(multiprocessing.Process):
                         self.logging.info(repr(schedule.every().day.at("00:00").do(feeds[feed_file].process, feed_name)))
                 else:
                     self.logging.info(repr(schedule.every(1).minute.do(feeds[feed_file].process, feed_name)))
+                
+        
     def run(self):
+        try:
+            setproctitle.setproctitle('[CIF-SERVER] - Feeder')
+        except:
+            pass
         while True:
             try:
                 schedule.run_pending()

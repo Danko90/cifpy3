@@ -1,0 +1,16 @@
+defaults:
+  tags: scanner
+  protocol: tcp
+  provider: 1d4.us
+  tlp: green
+  altid_tlp: white
+  confidence: 65
+  pattern: ^(\S+)$
+  values:
+    - observable
+feeds:
+  ssh:
+    remote: http://1d4.us/archive/ssh-today.txt
+    application: ssh
+    portlist: 22
+    interval: daily

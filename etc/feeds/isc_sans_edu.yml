@@ -5,6 +5,7 @@ defaults:
   pattern:  '^(\S+)$'
   values: observable
   tags: suspicious
+  interval: hourly
   skip: '^Site$'
 
 feeds:

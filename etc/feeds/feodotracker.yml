@@ -3,6 +3,7 @@ defaults:
   tlp: green
   altid_tlp: white
   confidence: 75
+  interval: daily
   altid: https://feodotracker.abuse.ch/host/<observable>
   tags:
     - feodo

@@ -3,6 +3,7 @@ defaults:
   confidence: 85
   tlp: green
   altid_tlp: white
+  interval: hourly
 
 feeds:
   ssh:

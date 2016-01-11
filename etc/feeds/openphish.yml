@@ -5,6 +5,7 @@ defaults:
   tlp: green
   altid_tlp: white
   confidence: 65
+  interval: daily
   values: observable
 feeds:
   urls:

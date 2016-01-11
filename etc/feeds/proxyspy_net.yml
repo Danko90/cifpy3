@@ -1,6 +1,7 @@
 defaults:
   provider: txt.proxyspy.net
   confidence: 75
+  interval: daily
   tlp: green
   altid_tlp: white
   tags: proxy

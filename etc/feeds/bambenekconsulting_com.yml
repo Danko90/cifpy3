@@ -4,6 +4,7 @@ defaults:
   altid_tlp: white
   confidence: 85
   alt_tlp: green
+  interval: hourly
   tags:
     - botnet
   values:

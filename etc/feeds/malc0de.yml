@@ -3,6 +3,7 @@ defaults:
   confidence: 85
   tlp: green
   altid_tlp: white
+  interval: hourly
   provider: malc0de.com
   remote: http://malc0de.com/rss
   tags: malware

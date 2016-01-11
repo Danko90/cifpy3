@@ -19,6 +19,206 @@ import requests.exceptions
 import yaml
 import tabulate
 
+
+###############################################################################
+# Generic output class
+class output_class(object):
+    def __init__(self, results, output_handle):
+        self.results = results
+        self.output_handle = output_handle
+
+    def process(self):
+        pass
+
+
+###############################################################################
+# class output_cli
+class output_cli(output_class):
+    def __init__(self, results, output_handle):
+        output_class.__init__(self, results, output_handle)
+
+    def process(self):
+        headers = options['select'].split(',')
+        rows = []
+        for result in self.results:
+            row = []
+            for header in headers:
+                if header in result:
+                    if isinstance(result[header], list):
+                        result[header] = ', '.join(result[header])
+                    row.append(result[header])
+                else:
+                    row.append('')
+            rows.append(row)
+        self.output_handle.write(tabulate.tabulate(rows,
+                            headers=headers,
+                            tablefmt="psql")+"\n")
+
+
+##############################################################################
+# class output_json
+class output_json(output_class):
+    def __init__(self, results, output_handle):
+        output_class.__init__(self, results, output_handle)
+
+    def process(self):
+        self.output_handle.write(json.dumps(self.results)+"\n")
+
+
+##############################################################################
+# class output_xml
+class output_xml(output_class):
+    def __init__(self, results, output_handle):
+        output_class.__init__(self, results, output_handle)
+
+    def process(self):
+        headers = options['select'].split(',')
+
+        if options['write'] is not None:
+            self.output_handle.close()
+            self.output_handle = open(options['write'], 'wb')
+        else:
+            raise RuntimeError("XML output can only be written to a file.")
+
+        observables = xml.etree.cElementTree.Element("observables")
+        for result in self.results:
+            observable = xml.etree.cElementTree.SubElement(observables, "observable")
+            for header in headers:
+                if isinstance(result[header], list):
+                    if not header.endswith('s'):
+                            header += 's'
+                    sub = xml.etree.cElementTree.SubElement(observable, header)
+                    for value in result[header]:
+                        xml.etree.cElementTree.SubElement(sub, header[:-1]).text = value
+                else:
+                    xml.etree.cElementTree.SubElement(observable, header).text = result[header]
+
+        tree = xml.etree.cElementTree.ElementTree(observables)
+        tree.write(self.output_handle)
+
+##############################################################################
+# class output_csv
+class output_csv(output_class):
+    def __init__(self, results, output_handle):
+        output_class.__init__(self, results, output_handle)
+
+    def process(self):
+        headers = options['select'].split(',')
+        writer = csv.writer(self.output_handle)
+        writer.writerow(headers)
+        for result in self.results:
+            row = []
+            for header in headers:
+                if header in result:
+                    if isinstance(result[header], list):
+                        result[header] = ', '.join(result[header])
+                    row.append(result[header])
+                else:
+                    row.append('')
+            writer.writerow(row)
+
+
+##############################################################################
+# class output_custom
+class output_custom(output_class):
+    def __init__(self, results, output_handle):
+        output_class.__init__(self, results, output_handle)
+
+    def process(self):
+        columns = options['select'].split(',')
+        for result in self.results:
+            row = []
+            for column in columns:
+                if column in result:
+                    row.append(result[column])
+                else:
+                    row.append('')
+            try:
+                self.output_handle.write(options['format_string'].format(*row)+"\n")
+            except Exception as e:
+                raise RuntimeError("Could not use custom formatting. column count: {0}; row count: {1}.".format(
+                    len(columns), len(row))
+                ) from e
+
+
+##############################################################################
+# class output_single
+class output_single(output_class):
+    def __init__(self, results, output_handle):
+        output_class.__init__(self, results, output_handle)
+
+    def process(self):
+        for result in self.results:
+            if options['select'] in result:
+                self.output_handle.write(result[options['select']]+"\n")
+
+
+##############################################################################
+# class output_bro
+class output_bro(output_class):
+    otype = {'ipv4': 'ADDR',
+             'url':  'URL',
+             'fqdn': 'DOMAIN'}
+
+    SEP = '|'
+
+    HEADER = '#' + '\t'.join(['fields',
+                              'indicator',
+                              'indicator_type',
+                              'meta.desc',
+                              'meta.cif_confidence',
+                              'meta.source'])
+
+    def __init__(self, results, output_handle):
+        output_class.__init__(self, results, output_handle)
+        self.cols = ['observable',
+                     'otype',
+                     'description',
+                     'confidence',
+                     'provider']
+
+    def _check_list(self, y):
+        ret = y
+        if type(y) is list:
+            ret = output_bro.SEP.join(y)
+        return ret
+
+    def process(self):
+        text = []
+        for result in self.results:
+            r = []
+            if result['otype'] is 'url':
+                result['observable'] = re.sub(r'(https?\:\/\/)', '',
+                                              result['observable'])
+
+            for c in self.cols:
+                y = result.get(c, '-')
+                y = self._check_list(y)
+                y = str(y)
+                if c is 'otype':
+                    y = 'Intel::{0}'.format(output_bro.otype[result[c]])
+                if c is 'description':
+                    if result[c] is None:
+                        y = result['tags']
+                        y = self._check_list(y)
+
+                r.append(y)
+            text.append("\t".join(r))
+
+        text = "\n".join(text)
+        text = "{0}\n{1}".format(output_bro.HEADER, text)
+        self.output_handle.write(text)
+
+output_handlers = {'cli':      output_cli,
+                   'json':     output_json,
+                   'xml':      output_xml,
+                   'csv':      output_csv,
+                   'custom':   output_custom,
+                   'single':   output_single,
+                   'bro':      output_bro}
+
+##############################################################################
+
 parser = argparse.ArgumentParser(description='Collective Intelligence Framework Client',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--url', dest='url', nargs='?', type=str, default='http://127.0.0.1:8080',
@@ -40,7 +240,7 @@ group.add_argument('--parallel', type=int, default=4, help="Make X requests at o
 #                   help='Shows the HTTP headers the server responded with')
 
 group = parser.add_argument_group('Output Options')
-group.add_argument('--format', dest='format', choices=['cli', 'json', 'xml', 'csv', 'custom', 'single'], default="cli",
+group.add_argument('--format', dest='format', choices=output_handlers.keys(), default="cli",
                    help="Output in this format. Custom can be defined using --format-string 'column,column2,...', "
                         "single will use the first column specified in 'select', by default it is 'observable'")
 group.add_argument('--select', dest='select', help='Comma separated list of columns to display.',
@@ -91,7 +291,7 @@ def do_request():
             sys.stderr.write("[ERROR] Could not make request to CIF Server: {0}\n".format(e))
             request_queue.task_done()
             continue
-        
+
         if response.status_code == 200:
             try:
                 result = json.loads(response.text)
@@ -101,16 +301,16 @@ def do_request():
                 raise RuntimeError("Could not fetch results from successful query") from e
             finally:
                 results_lock.release()
-    
+
         elif response.status_code == 404:
             break
-        
+
         elif response.status_code == 401:
             raise RuntimeError("Invalid Authentication: {0}".format(response.text))
-    
+
         elif response.status_code == 400:
             raise RuntimeError("Invalid Query: {0}".format(response.text))
-            
+
         request_queue.task_done()
 
 
@@ -144,7 +344,7 @@ for x in range(0, request_count):
 for x in range(0, request_count):
     request_queue.put({'index': x, 'url': '{0}/observables?start={1}&count={2}&{3}'.format(
             options['url'], options['start'], options['chunk_size'], options['query'])})
-    
+
     options['start'] += options['chunk_size']
 
     if options['end'] is not None:
@@ -162,10 +362,10 @@ for x in range(0, options['parallel']):
     worker.daemon = True
     worker.start()
     workers.append(worker)
-    
+
 for worker in workers:
     worker.join()
-    
+
 # Merge the results
 results = []
 for i,v in enumerate(results_list):
@@ -178,78 +378,5 @@ if options['write'] is not None:
 else:
     output_handle = sys.stdout
 
-if options['format'] == "cli":
-    headers = options['select'].split(',')
-    rows = []
-    for result in results:
-        row = []
-        for header in headers:
-            if header in result:
-                if isinstance(result[header], list):
-                    result[header] = ', '.join(result[header])
-                row.append(result[header])
-            else:
-                row.append('')
-        rows.append(row)
-    output_handle.write(tabulate.tabulate(rows, headers=headers, tablefmt="psql")+"\n")
-elif options['format'] == "json":
-    output_handle.write(json.dumps(results)+"\n")
-elif options['format'] == "xml":
-    headers = options['select'].split(',')
-
-    if options['write'] is not None:
-        output_handle.close()
-        output_handle = open(options['write'], 'wb')
-    else:
-        raise RuntimeError("XML output can only be written to a file.")
-
-    observables = xml.etree.cElementTree.Element("observables")
-    for result in results:
-        observable = xml.etree.cElementTree.SubElement(observables, "observable")
-        for header in headers:
-            if isinstance(result[header], list):
-                if not header.endswith('s'):
-                        header += 's'
-                sub = xml.etree.cElementTree.SubElement(observable, header)
-                for value in result[header]:
-                    xml.etree.cElementTree.SubElement(sub, header[:-1]).text = value
-            else:
-                xml.etree.cElementTree.SubElement(observable, header).text = result[header]
-
-    tree = xml.etree.cElementTree.ElementTree(observables)
-    tree.write(output_handle)
-
-elif options['format'] == "csv":
-    headers = options['select'].split(',')
-    writer = csv.writer(output_handle)
-    writer.writerow(headers)
-    for result in results:
-        row = []
-        for header in headers:
-            if header in result:
-                if isinstance(result[header], list):
-                    result[header] = ', '.join(result[header])
-                row.append(result[header])
-            else:
-                row.append('')
-        writer.writerow(row)
-elif options['format'] == "custom":
-    columns = options['select'].split(',')
-    for result in results:
-        row = []
-        for column in columns:
-            if column in result:
-                row.append(result[column])
-            else:
-                row.append('')
-        try:
-            output_handle.write(options['format_string'].format(*row)+"\n")
-        except Exception as e:
-            raise RuntimeError("Could not use custom formatting. column count: {0}; row count: {1}.".format(
-                len(columns), len(row))
-            ) from e
-
-elif options['format'] == "single":
-    for result in results:
-        if options['select'] in result:
-            output_handle.write(result[options['select']]+"\n")
+oh = output_handlers[options['format']](results, output_handle)
+oh.process()

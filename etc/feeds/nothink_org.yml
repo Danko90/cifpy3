@@ -11,20 +11,25 @@ feeds:
     remote: http://www.nothink.org/blacklist/blacklist_ssh_day.txt
     application: ssh
     portlist: 22
+    interval: hourly
     tags: scanner
     protocol: tcp
   malware_http:
     remote: http://www.nothink.org/blacklist/blacklist_malware_http.txt
+    interval: hourly
     tags:
       - suspicious
   malware_dns:
     remote: http://www.nothink.org/blacklist/blacklist_malware_dns.txt
+    interval: hourly
     tags:
       - suspicious
   malware_irc:
     remote: http://www.nothink.org/blacklist/blacklist_malware_irc.txt
+    interval: hourly
     tags:
       - suspicious
   snmp:
     remote: http://www.nothink.org/blacklist/blacklist_snmp_2015.txt
+    interval: hourly
     tags: scanner

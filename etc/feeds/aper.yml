@@ -5,6 +5,7 @@ defaults:
   remote: http://sourceforge.net/p/aper/code/HEAD/tree/phishing_reply_addresses?format=raw
   tags: phishing
   pattern: '^(\S+),[C|D|E],(\S+)$'
+  interval: daily
   values:
     - observable
     - lasttime

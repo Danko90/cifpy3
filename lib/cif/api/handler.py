@@ -6,6 +6,8 @@ import json
 import cgi
 import copy
 
+import setproctitle
+
 import cif
 
 
@@ -14,9 +16,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def __init__(self, *args):
         self.token = None
         http.server.BaseHTTPRequestHandler.__init__(self, *args)
-
-
+        
     def connect_to_backend(self):
+        try:
+            setproctitle.setproctitle('[CIF-SERVER] - API Handler - {0} {1}'.format(self.command, self.path))
+        except:
+            pass
         # Based on the startup options for cif-server, let's get the backend + instantiate the class from that module
         self.server.logging.debug("Loading backend: {0}".format(cif.options.storage.lower()))
         self.backend = getattr(__import__("cif.backends.{0}".format(

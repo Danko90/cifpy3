@@ -1,0 +1,23 @@
+parser: html
+defaults:
+  confidence: 65
+  tlp: green
+  altid_tlp: white
+  provider: botscout.com
+  remote: http://botscout.com/last_caught_cache.htm
+  tags: botnet
+  interval: hourly
+
+feeds:
+  bots:
+    node: XmostRecent
+    map:
+      - Bot Name
+      - Bot Email
+      - Bot IP
+      - From
+    values:
+      - description
+      - null
+      - observable
+      - null

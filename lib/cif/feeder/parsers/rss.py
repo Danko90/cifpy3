@@ -18,7 +18,11 @@ class Rss(Parser):
             for value in pattern['values']:
                 self.parsing_details['values'].append(value)
         self.valuecount = len(self.parsing_details['values'])
-
+    
+    def cleanup(self):
+        # Feedparser has a memory leak in it. 
+        reload(feedparser)
+        
     def parsefile(self, max_objects=1000):
         """Parse file provided by self.file`. Return `max_objects` at a time. This is repetitively called
 

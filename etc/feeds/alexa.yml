@@ -14,6 +14,7 @@ defaults:
   provider: alexa.com
   tlp: green
   altid_tlp: white
+  interval: daily
 
 feeds:
   # there's urls in some of the fields...

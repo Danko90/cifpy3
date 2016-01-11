@@ -12,6 +12,8 @@ import logging
 import sys
 import time
 
+import setproctitle
+
 # Append our local lib directory to the import paths
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
 
@@ -118,7 +120,10 @@ def sigint_handler(signum, frame):
     del frame
     sys.exit(0)
 signal.signal(signal.SIGINT, sigint_handler)
-
+try:
+    setproctitle.setproctitle('[CIF-SERVER] - Controller')
+except:
+    pass
 logger.info("Monitoring Loop: Entering")
 while True:
     logger.info("Monitoring Loop: Checking Workers")

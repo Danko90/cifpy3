@@ -5,6 +5,8 @@ import socketserver
 import multiprocessing
 import sys
 
+import setproctitle
+
 import cif
 
 
@@ -22,6 +24,10 @@ class Server(multiprocessing.Process):
         self.logging.debug("Initialized api Server")
 
     def run(self):
+        try:
+            setproctitle.setproctitle('[CIF-SERVER] - API Server')
+        except:
+            pass
         self.logging.info("Starting api Server")
         # Run the api server
         server = HTTPServer((cif.options.host, cif.options.port), cif.api.Handler)

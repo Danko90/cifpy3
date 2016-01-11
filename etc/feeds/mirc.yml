@@ -4,6 +4,7 @@ defaults:
   protocol: tcp
   tlp: green
   altid_tlp: white
+  interval: daily
   confidence: 85
   application: irc
   remote: http://www.mirc.com/servers.ini

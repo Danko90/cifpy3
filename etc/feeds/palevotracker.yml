@@ -3,6 +3,7 @@ defaults:
   tlp: green
   altid_tlp: white
   altid: https://palevotracker.abuse.ch/
+  interval: daily
   tags:
     - palevo
     - botnet

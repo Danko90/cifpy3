@@ -1,0 +1,20 @@
+parser: regex
+defaults:
+  provider: torproject.org
+  description: 'Tor exit nodes from torproject'
+  confidence: 95
+  tlp: green
+  altid_tlp: white
+  altid: https://exonerator.torproject.org/?ip=<observable>&timestamp=<date>
+  interval: daily
+
+feeds:
+  tor_exit:
+    remote: https://check.torproject.org/exit-addresses
+    otype: ipv4
+    application: tor
+    pattern: '^ExitAddress\s(\S+).*$'
+    values:
+      - observable
+    tags:
+      - tor

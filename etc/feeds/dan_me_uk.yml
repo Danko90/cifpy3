@@ -1,0 +1,20 @@
+parser: regex
+defaults:
+  provider: dan.me.uk
+  description: 'Tor exit nodes from dam.me.uk'
+  confidence: 75
+  tlp: green
+  altid_tlp: white
+  altid: https://www.dan.me.uk/torcheck?ip=<observable>
+  interval: hourly
+
+feeds:
+  tor_exit:
+    remote: https://www.dan.me.uk/torlist/
+    otype: ipv4
+    application: tor
+    pattern: '^(\S+)$'
+    values:
+      - observable
+    tags:
+      - tor

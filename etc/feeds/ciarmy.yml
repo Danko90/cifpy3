@@ -1,0 +1,17 @@
+parser: regex
+defaults:
+  provider: cinsscore.com
+  description: 'Suspicious IP from CI Army list'
+  confidence: 85
+  tlp: green
+  altid_tlp: white
+
+feeds:
+  tor_exit:
+    remote: http://cinsscore.com/list/ci-badguys.txt
+    otype: ipv4
+    pattern: '^(\S+)$'
+    values:
+      - observable
+    tags:
+      - suspicious
